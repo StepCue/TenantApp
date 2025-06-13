@@ -39,8 +39,8 @@
                                     <MudTextField @bind-Value="step.Summary" Label="Step Summary" Lines="3" Class="mb-2" />
                                     
                                     <MudText Typo="Typo.subtitle2" Class="mb-2">Screenshot</MudText>
-                                    <ScreenshotUploader @bind-ImageData="step.Screenshot" />
-                                    
+                                    @* <ScreenshotUploader @bind-ImageData="step.Screenshot" />
+                                     *@
                                     <MudButton Color="Color.Error" 
                                               OnClick="@(() => _plan.Steps.Remove(step))" 
                                               Class="mt-2">

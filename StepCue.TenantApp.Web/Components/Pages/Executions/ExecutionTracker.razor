@@ -30,10 +30,10 @@
                                 </CardHeaderContent>
                             </MudCardHeader>
                             <MudCardContent>
-                                <MudList Clickable="true">
+                                <MudList T="String" Clickable="true">
                                     @foreach (var step in _execution.Steps)
                                     {
-                                        <MudListItem @key="step" 
+                                        <MudListItem T="String" @key="step" 
                                                    Icon="@GetStepIcon(step)"
                                                    IconColor="@GetStepColor(step)"
                                                    OnClick="@(() => SelectStep(step))">
@@ -61,7 +61,7 @@
                             <MudText Typo="Typo.h6" Class="mb-2">Team Members</MudText>
                             @foreach (var member in _execution.Members)
                             {
-                                <MudChip Color="Color.Primary" Class="ma-1">@member.Name</MudChip>
+                                <MudChip T="String" Color="Color.Primary" Class="ma-1">@member.Name</MudChip>
                             }
                         </MudPaper>
                     </MudItem>
@@ -105,11 +105,11 @@
                                             
                                             @if (_selectedStep.Screenshot != null && _selectedStep.Screenshot.Length > 0)
                                             {
-                                                <MudImage Src="@_fileService.GetImageDataUrl(_selectedStep.Screenshot)" 
+                                   @*              <MudImage Src="@_fileService.GetImageDataUrl(_selectedStep.Screenshot)" 
                                                         Alt="Plan screenshot" 
                                                         Class="mt-4"
                                                         Width="100%" 
-                                                        ObjectFit="ObjectFit.Cover" />
+                                                        ObjectFit="ObjectFit.Cover" /> *@
                                             }
                                         </MudCardContent>
                                     </MudCard>
@@ -140,7 +140,7 @@
                                                                 Class="mb-3" />
                                                     
                                                     <MudText Class="mb-2">Upload Result Screenshot</MudText>
-                                                    <ScreenshotUploader @bind-ImageData="_selectedStep.ResultScreenshot" />
+                                                @*     <ScreenshotUploader @bind-ImageData="_selectedStep.ResultScreenshot" /> *@
                                                     
                                                     <MudButton Variant="Variant.Filled" 
                                                              Color="Color.Success" 
@@ -166,11 +166,11 @@
                                                 
                                                 @if (_selectedStep.ResultScreenshot != null && _selectedStep.ResultScreenshot.Length > 0)
                                                 {
-                                                    <MudImage Src="@_fileService.GetImageDataUrl(_selectedStep.ResultScreenshot)" 
+                                              @*       <MudImage Src="@_fileService.GetImageDataUrl(_selectedStep.ResultScreenshot)" 
                                                             Alt="Result screenshot" 
                                                             Class="mt-4"
                                                             Width="100%" 
-                                                            ObjectFit="ObjectFit.Cover" />
+                                                            ObjectFit="ObjectFit.Cover" /> *@
                                                 }
                                             </MudCardContent>
                                         </MudCard>

@@ -14,7 +14,7 @@
             {
                 foreach (var message in Step.Messages.OrderBy(m => m.CreatedOn))
                 {
-                    <MudPaper Elevation="0" Class="pa-2 mb-2 @GetMessageClass(message)">
+                    <MudPaper Elevation="0" Class="pa-2 mb-2">
                         <MudText Typo="Typo.subtitle2">@message.Author?.Name</MudText>
                         <MudText Typo="Typo.body2">@message.Message</MudText>
                         <MudText Typo="Typo.caption" Class="d-flex justify-end">
