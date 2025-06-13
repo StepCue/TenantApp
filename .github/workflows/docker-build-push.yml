@@ -1,0 +1,45 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+
+env:
+  DOCKER_REPO: stepcue/tenantapp
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Extract branch name
+      shell: bash
+      run: |
+        if [[ "${GITHUB_REF}" == "refs/heads/"* ]]; then
+          echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+        elif [[ "${GITHUB_REF}" == "refs/pull/"* ]]; then
+          echo "BRANCH_NAME=pr-${GITHUB_REF#refs/pull/}" >> $GITHUB_ENV
+          echo "BRANCH_NAME=${BRANCH_NAME%/*}" >> $GITHUB_ENV
+        else
+          echo "BRANCH_NAME=${GITHUB_REF}" >> $GITHUB_ENV
+        fi
+      
+    - name: Build Docker image
+      run: |
+        docker build -t newimage .
+    
+    - name: Login to Docker Hub and Push
+      if: github.event_name != 'pull_request'
+      run: |
+        docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
+        docker image tag newimage ${{ secrets.DOCKER_USER }}/${{ env.DOCKER_REPO }}:${{ env.BRANCH_NAME }}-latest
+        docker image tag newimage ${{ secrets.DOCKER_USER }}/${{ env.DOCKER_REPO }}:${{ env.BRANCH_NAME }}-v${{ github.run_number }}
+        docker image push --all-tags ${{ secrets.DOCKER_USER }}/${{ env.DOCKER_REPO }}
