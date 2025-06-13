@@ -8,8 +8,13 @@ using StepCue.TenantApp.Data.Models;
 
 namespace StepCue.TenantApp.Data
 {
-    internal class DataContext : DbContext
+    public class DataContext : DbContext
     {
+        public DataContext(DbContextOptions<DataContext> options)
+            : base(options)
+        {
+        }
+
         public DbSet<Plan> Plans { get; set; }
     }
 }

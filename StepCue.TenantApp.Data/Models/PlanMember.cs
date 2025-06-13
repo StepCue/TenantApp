@@ -6,9 +6,13 @@ using System.Threading.Tasks;
 
 namespace StepCue.TenantApp.Data.Models
 {
-    internal class PlanMember
+    public class PlanMember
     {
-        public string Name { get; set; }
-        public string EmailAddress { get; set; }
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string EmailAddress { get; set; } = string.Empty;
+
+        public int PlanId { get; set; }
+        public Plan? Plan { get; set; }
     }
 }
