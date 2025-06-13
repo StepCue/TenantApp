@@ -39,7 +39,7 @@ jobs:
     - name: Login to Docker Hub and Push
       if: github.event_name != 'pull_request'
       run: |
-        docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
+        docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }} docker.io
         docker image tag newimage ${{ secrets.DOCKER_USER }}/${{ env.DOCKER_REPO }}:${{ env.BRANCH_NAME }}-latest
         docker image tag newimage ${{ secrets.DOCKER_USER }}/${{ env.DOCKER_REPO }}:${{ env.BRANCH_NAME }}-v${{ github.run_number }}
         docker image push --all-tags ${{ secrets.DOCKER_USER }}/${{ env.DOCKER_REPO }}
