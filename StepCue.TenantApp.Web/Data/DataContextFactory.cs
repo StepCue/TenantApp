@@ -1,7 +1,8 @@
 using System;
 using Microsoft.EntityFrameworkCore;
+using StepCue.TenantApp.Data;
 
-namespace StepCue.TenantApp.Data
+namespace StepCue.TenantApp.Web.Data
 {
     public class DataContextFactory
     {
