@@ -4,7 +4,7 @@ A Blazor Server application for managing plans and executions.
 
 ## Technologies Used
 
-- .NET 9.0
+- .NET 8.0
 - ASP.NET Core Blazor Server
 - Entity Framework Core (In-Memory Database)
 - MudBlazor
@@ -52,7 +52,7 @@ Images are tagged with:
 ## Development
 
 ### Prerequisites
-- .NET 9.0 SDK
+- .NET 8.0 SDK
 - Docker (for containerization)
 
 ### Project Structure

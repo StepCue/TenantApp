@@ -1,5 +1,5 @@
-# Use the .NET 9.0 SDK for building
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+# Use the .NET 8.0 SDK for building
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
 
 # Copy solution file and project files
@@ -19,8 +19,8 @@ RUN dotnet build --configuration Release --no-restore
 # Publish the application
 RUN dotnet publish StepCue.TenantApp.Web/StepCue.TenantApp.Web.csproj --configuration Release --no-build --output /app/publish
 
-# Use the .NET 9.0 runtime for the final image
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+# Use the .NET 8.0 runtime for the final image
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
