@@ -12,7 +12,6 @@ namespace StepCue.TenantApp.Data.Models.Execution
         public DateTime? StartedOn { get; set; }
         public DateTime? CompleteOn { get; set; }
         public string ResultSummary { get; set; }
-        public byte[] Evidence { get; set; }
 
     }
 }
