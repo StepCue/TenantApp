@@ -21,10 +21,10 @@ docker-compose up --build
 #### Build and run manually
 ```bash
 # Build the Docker image
-docker build -t stepcue/tenantapp:latest .
+docker build -t thestamp/stepcue:latest .
 
 # Run the container
-docker run -p 8080:8080 stepcue/tenantapp:latest
+docker run -p 8080:8080 thestamp/stepcue:latest
 ```
 
 The application will be available at `http://localhost:8080`
@@ -44,8 +44,10 @@ dotnet run --project StepCue.TenantApp.Web
 The application is automatically built and pushed to Docker Hub when changes are made to the main or develop branches.
 
 Images are tagged with:
-- `{branch-name}-latest` - Latest build for the branch
-- `{branch-name}-v{build-number}` - Specific build version
+- `latest` - Latest build for the main branch
+- `v{build-number}` - Specific build version for main branch
+- `{branch-name}-latest` - Latest build for other branches (e.g., develop)
+- `{branch-name}-v{build-number}` - Specific build version for other branches
 
 ## Development
 
