@@ -1,0 +1,46 @@
+@using StepCue.TenantApp.Data.Models.Planning
+
+<MudPaper Class="pa-4" Elevation="0">
+    <MudList T="String" Dense="true">
+        @foreach (var member in Members)
+        {
+            <MudListItem T="String" @key="member">
+                <div class="d-flex align-center">
+                    <MudAvatar Color="Color.Primary" Class="mr-2">
+                        @member.Name?.FirstOrDefault().ToString().ToUpper()
+                    </MudAvatar>
+                    <div class="flex-grow-1">
+                        <MudTextField @bind-Value="member.Name" 
+                                     Label="Name" 
+                                     Variant="Variant.Outlined" 
+                                     Class="mr-2" />
+                        <MudTextField @bind-Value="member.EmailAddress" 
+                                     Label="Email" 
+                                     Variant="Variant.Outlined" 
+                                     Class="mt-2" />
+                    </div>
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                  Color="Color.Error" 
+                                  OnClick="@(() => Members.Remove(member))" />
+                </div>
+            </MudListItem>
+        }
+    </MudList>
+
+    <MudButton StartIcon="@Icons.Material.Filled.PersonAdd" 
+              Color="Color.Primary" 
+              OnClick="@AddMember"
+              Class="mt-3">
+        Add Member
+    </MudButton>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public List<PlanMember> Members { get; set; } = new();
+    
+    private void AddMember()
+    {
+        Members.Add(new PlanMember());
+    }
+}

@@ -1,0 +1,99 @@
+@page "/plans"
+@using StepCue.TenantApp.Data.Models.Planning
+@using StepCue.TenantApp.Web.Services
+@inject PlanService PlanService
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@rendermode InteractiveServer
+
+<PageTitle>Plans</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Plans</MudText>
+    
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" 
+               OnClick="@(() => NavigationManager.NavigateTo("/plans/new"))">
+        Create New Plan
+    </MudButton>
+    
+    <MudDivider Class="my-4" />
+    
+    @if (_plans == null)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else if (!_plans.Any())
+    {
+        <MudText>No plans found. Create your first plan.</MudText>
+    }
+    else
+    {
+        <MudGrid>
+            @foreach (var plan in _plans)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Elevation="2">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">@plan.Name</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudText>@plan.Steps.Count steps</MudText>
+                            <MudText>@plan.Members.Count members</MudText>
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" 
+                                      OnClick="@(() => NavigationManager.NavigateTo($"/plans/{plan.Id}"))">
+                                Edit
+                            </MudButton>
+                            <MudButton Variant="Variant.Filled" Color="Color.Success" 
+                                      OnClick="@(() => ExecutePlan(plan.Id))">
+                                Execute
+                            </MudButton>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" 
+                                         OnClick="@(() => ConfirmDelete(plan))"/>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private List<Plan> _plans;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _plans = await PlanService.GetPlansAsync();
+    }
+
+    private async Task ExecutePlan(int planId)
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Execute Plan",
+            "Are you sure you want to execute this plan? This will create a new execution.",
+            yesText: "Execute", cancelText: "Cancel");
+            
+        if (result == true)
+        {
+            NavigationManager.NavigateTo($"/executions/create/{planId}");
+        }
+    }
+
+    private async Task ConfirmDelete(Plan plan)
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Delete Plan",
+            $"Are you sure you want to delete plan '{plan.Name}'?",
+            yesText: "Delete", cancelText: "Cancel");
+            
+        if (result == true)
+        {
+            await PlanService.DeletePlanAsync(plan.Id);
+            _plans.Remove(plan);
+            StateHasChanged();
+        }
+    }
+}

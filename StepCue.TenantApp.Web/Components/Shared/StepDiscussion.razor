@@ -1,0 +1,122 @@
+@using StepCue.TenantApp.Data.Models.Execution
+@using StepCue.TenantApp.Web.Services
+@inject ExecutionService ExecutionService
+
+<MudCard Elevation="1" Class="discussion-card">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Discussion</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <div class="discussion-container">
+            @if (Step?.Messages?.Count > 0)
+            {
+                foreach (var message in Step.Messages.OrderBy(m => m.CreatedOn))
+                {
+                    <MudPaper Elevation="0" Class="pa-2 mb-2">
+                        <MudText Typo="Typo.subtitle2">@message.Author?.Name</MudText>
+                        <MudText Typo="Typo.body2">@message.Message</MudText>
+                        <MudText Typo="Typo.caption" Class="d-flex justify-end">
+                            @message.CreatedOn.ToString("g")
+                        </MudText>
+                    </MudPaper>
+                }
+            }
+            else
+            {
+                <MudText Align="Align.Center" Class="pa-4">No messages yet</MudText>
+            }
+        </div>
+    </MudCardContent>
+    <MudCardActions>
+        <MudTextField T="string" 
+                     @bind-Value="_newMessage" 
+                     Label="Type a message" 
+                     Variant="Variant.Outlined" 
+                     Adornment="Adornment.End" 
+                     AdornmentIcon="@Icons.Material.Filled.Send"
+                     OnAdornmentClick="SendMessage"
+                     OnKeyDown="@OnKeyDown"
+                     Class="flex-grow-1 mr-2" />
+    </MudCardActions>
+</MudCard>
+
+<style>
+    .discussion-card {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .discussion-container {
+        max-height: 400px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .message-self {
+        background-color: var(--mud-palette-primary-hover);
+        margin-left: 20px;
+        border-radius: 8px;
+    }
+    
+    .message-others {
+        background-color: var(--mud-palette-surface);
+        margin-right: 20px;
+        border-radius: 8px;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public ExecutionStep Step { get; set; }
+    
+    private string _newMessage = "";
+    
+    [CascadingParameter]
+    private ExecutionMember CurrentUser { get; set; }
+    
+    private string GetMessageClass(ExecutionStepMessage message)
+    {
+        // For demo purposes, assume the first member is the current user
+        var currentUser = Step?.Execution?.Members?.FirstOrDefault();
+        return message.AuthorId == currentUser?.Id ? "message-self" : "message-others";
+    }
+    
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(_newMessage) || Step == null)
+            return;
+            
+        // For demo purposes, use the first member as the author
+        var author = Step.Execution?.Members?.FirstOrDefault() ?? new ExecutionMember { Id = 1, Name = "Demo User" };
+        
+        var message = new ExecutionStepMessage
+        {
+            ExecutionStepId = Step.Id,
+            ExecutionStep = Step,
+            Author = author,
+            AuthorId = author.Id,
+            Message = _newMessage,
+            CreatedOn = DateTime.Now
+        };
+        
+        await ExecutionService.AddMessageToStepAsync(message);
+        
+        if (Step.Messages == null)
+            Step.Messages = new List<ExecutionStepMessage>();
+            
+        Step.Messages.Add(message);
+        _newMessage = "";
+    }
+    
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessage();
+        }
+    }
+}

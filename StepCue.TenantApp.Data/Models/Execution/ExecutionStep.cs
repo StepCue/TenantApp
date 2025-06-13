@@ -9,9 +9,12 @@ namespace StepCue.TenantApp.Data.Models.Execution
 {
     public class ExecutionStep : PlanStep
     {
+        public int ExecutionId { get; set; }
+        public Execution Execution { get; set; }
         public DateTime? StartedOn { get; set; }
         public DateTime? CompleteOn { get; set; }
-        public string ResultSummary { get; set; }
-
+        public string ResultSummary { get; set; } = string.Empty;
+        public byte[] ResultScreenshot { get; set; }
+        public List<ExecutionStepMessage> Messages { get; set; } = new();
     }
 }

@@ -2,6 +2,7 @@ using MudBlazor.Services;
 using Microsoft.EntityFrameworkCore;
 using StepCue.TenantApp.Data;
 using StepCue.TenantApp.Web.Components;
+using StepCue.TenantApp.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,11 @@ builder.Services.AddMudServices();
 // Add in-memory database 
 builder.Services.AddDbContext<DataContext>(options =>
     options.UseInMemoryDatabase("StepCueInMemoryDb"));
+
+// Register application services
+builder.Services.AddScoped<PlanService>();
+builder.Services.AddScoped<ExecutionService>();
+builder.Services.AddScoped<FileService>();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
