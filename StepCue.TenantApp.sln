@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36121.58 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StepCue.TenantApp.Web", "StepCue.TenantApp.Web\StepCue.TenantApp.Web.csproj", "{F2634CB1-5C3E-42EF-A783-7900CBB8F18F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StepCue.TenantApp.Data", "StepCue.TenantApp.Data\StepCue.TenantApp.Data.csproj", "{2F2B4B8E-56CC-477C-9F73-77BC7CBBCC05}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F2634CB1-5C3E-42EF-A783-7900CBB8F18F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F2634CB1-5C3E-42EF-A783-7900CBB8F18F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F2634CB1-5C3E-42EF-A783-7900CBB8F18F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F2634CB1-5C3E-42EF-A783-7900CBB8F18F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2F2B4B8E-56CC-477C-9F73-77BC7CBBCC05}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F2B4B8E-56CC-477C-9F73-77BC7CBBCC05}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F2B4B8E-56CC-477C-9F73-77BC7CBBCC05}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F2B4B8E-56CC-477C-9F73-77BC7CBBCC05}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0040E1B1-E1AF-4E11-9BE9-ACF88F875008}
+	EndGlobalSection
+EndGlobal
