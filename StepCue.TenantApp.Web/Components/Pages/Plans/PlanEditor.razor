@@ -1,0 +1,132 @@
+@page "/plans/new"
+@page "/plans/{Id:int}"
+@using StepCue.TenantApp.Data.Models.Planning
+@using StepCue.TenantApp.Web.Services
+@inject PlanService PlanService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+
+<PageTitle>@(_isNewPlan ? "Create Plan" : "Edit Plan")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">@(_isNewPlan ? "Create Plan" : "Edit Plan")</MudText>
+    
+    @if (_isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else
+    {
+        <MudForm Model="@_plan" @ref="_form">
+            <MudCard Elevation="0">
+                <MudCardContent>
+                    <MudTextField @bind-Value="_plan.Name" Label="Plan Name" Required="true" RequiredError="Plan name is required" />
+                    
+                    <MudText Typo="Typo.h6" Class="mt-4">Members</MudText>
+                    <MemberManager Members="@_plan.Members" />
+                    
+                    <MudText Typo="Typo.h6" Class="mt-4">Steps</MudText>
+                    <MudPaper Class="pa-4 mt-2" Elevation="0">
+                        @foreach (var step in _plan.Steps)
+                        {
+                            <MudExpansionPanel @key="step" Class="mb-2">
+                                <TitleContent>
+                                    <MudText Typo="Typo.h6">@(string.IsNullOrEmpty(step.Name) ? "New Step" : step.Name)</MudText>
+                                </TitleContent>
+                                <ChildContent>
+                                    <MudTextField @bind-Value="step.Name" Label="Step Name" Required="true" Class="mb-2" />
+                                    <MudTextField @bind-Value="step.Summary" Label="Step Summary" Lines="3" Class="mb-2" />
+                                    
+                                    <MudText Typo="Typo.subtitle2" Class="mb-2">Screenshot</MudText>
+                                    <ScreenshotUploader @bind-ImageData="step.Screenshot" />
+                                    
+                                    <MudButton Color="Color.Error" 
+                                              OnClick="@(() => _plan.Steps.Remove(step))" 
+                                              Class="mt-2">
+                                        Remove Step
+                                    </MudButton>
+                                </ChildContent>
+                            </MudExpansionPanel>
+                        }
+                        
+                        <MudButton StartIcon="@Icons.Material.Filled.Add" 
+                                  Color="Color.Primary" 
+                                  OnClick="@AddStep"
+                                  Class="mt-3">
+                            Add Step
+                        </MudButton>
+                    </MudPaper>
+                </MudCardContent>
+                
+                <MudCardActions>
+                    <MudButton Variant="Variant.Filled" 
+                              Color="Color.Primary" 
+                              OnClick="SavePlan">
+                        Save Plan
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" 
+                              Color="Color.Secondary" 
+                              OnClick="@(() => NavigationManager.NavigateTo("/plans"))">
+                        Cancel
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudForm>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+    
+    private Plan _plan = new Plan();
+    private bool _isNewPlan => Id == null;
+    private bool _isLoading = true;
+    private MudForm _form;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!_isNewPlan)
+        {
+            var plan = await PlanService.GetPlanAsync(Id.Value);
+            if (plan != null)
+            {
+                _plan = plan;
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/plans");
+                Snackbar.Add("Plan not found", Severity.Error);
+            }
+        }
+        
+        _isLoading = false;
+    }
+
+    private void AddStep()
+    {
+        _plan.Steps.Add(new PlanStep());
+    }
+
+    private async Task SavePlan()
+    {
+        await _form.Validate();
+        
+        if (_form.IsValid)
+        {
+            if (_isNewPlan)
+            {
+                await PlanService.CreatePlanAsync(_plan);
+                Snackbar.Add("Plan created successfully", Severity.Success);
+            }
+            else
+            {
+                await PlanService.UpdatePlanAsync(_plan);
+                Snackbar.Add("Plan updated successfully", Severity.Success);
+            }
+            
+            NavigationManager.NavigateTo("/plans");
+        }
+    }
+}

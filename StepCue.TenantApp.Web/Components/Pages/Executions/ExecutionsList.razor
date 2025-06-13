@@ -1,0 +1,64 @@
+@page "/executions"
+@using StepCue.TenantApp.Data.Models.Execution
+@using StepCue.TenantApp.Web.Services
+@inject ExecutionService ExecutionService
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Executions</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Executions</MudText>
+    
+    <MudDivider Class="my-4" />
+    
+    @if (_executions == null)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else if (!_executions.Any())
+    {
+        <MudText>No executions found. Execute a plan to create one.</MudText>
+        <MudButton Variant="Variant.Filled" 
+                  Color="Color.Primary" 
+                  OnClick="@(() => NavigationManager.NavigateTo("/plans"))"
+                  Class="mt-3">
+            Go to Plans
+        </MudButton>
+    }
+    else
+    {
+        <MudTable Items="@_executions" Hover="true" Breakpoint="Breakpoint.Sm">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Created On</MudTh>
+                <MudTh>Original Plan</MudTh>
+                <MudTh>Steps</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd DataLabel="Created On">@context.CreatedOn.ToShortDateString()</MudTd>
+                <MudTd DataLabel="Original Plan">@context.Plan?.Name</MudTd>
+                <MudTd DataLabel="Steps">@context.Steps.Count</MudTd>
+                <MudTd>
+                    <MudButton Variant="Variant.Filled" 
+                              Color="Color.Primary" 
+                              Size="Size.Small"
+                              OnClick="@(() => NavigationManager.NavigateTo($"/executions/{context.Id}"))">
+                        Continue
+                    </MudButton>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private List<Execution> _executions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _executions = await ExecutionService.GetExecutionsAsync();
+    }
+}

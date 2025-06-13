@@ -1,0 +1,287 @@
+@page "/executions/{Id:int}"
+@page "/executions/create/{PlanId:int}"
+@using StepCue.TenantApp.Data.Models.Execution
+@using StepCue.TenantApp.Web.Services
+@inject ExecutionService ExecutionService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+
+<PageTitle>Execution Tracker</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    @if (_execution == null)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else
+    {
+        <MudText Typo="Typo.h4" Class="mb-2">@_execution.Name</MudText>
+        <MudText Typo="Typo.subtitle1" Class="mb-4">Based on plan: @_execution.Plan?.Name</MudText>
+        
+        <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+            <MudTabPanel Text="Progress">
+                <MudGrid>
+                    <MudItem xs="12" md="8">
+                        <MudCard Elevation="0">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h5">Execution Steps</MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                <MudList Clickable="true">
+                                    @foreach (var step in _execution.Steps)
+                                    {
+                                        <MudListItem @key="step" 
+                                                   Icon="@GetStepIcon(step)"
+                                                   IconColor="@GetStepColor(step)"
+                                                   OnClick="@(() => SelectStep(step))">
+                                            <div class="d-flex">
+                                                <div class="flex-grow-1">
+                                                    <MudText Typo="Typo.body1">@step.Name</MudText>
+                                                    @if (step.CompleteOn.HasValue)
+                                                    {
+                                                        <MudText Typo="Typo.caption">Completed on @step.CompleteOn.Value.ToShortDateString()</MudText>
+                                                    }
+                                                    else if (step.StartedOn.HasValue)
+                                                    {
+                                                        <MudText Typo="Typo.caption">Started on @step.StartedOn.Value.ToShortDateString()</MudText>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </MudListItem>
+                                    }
+                                </MudList>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudPaper Class="pa-4" Elevation="2">
+                            <MudText Typo="Typo.h6" Class="mb-2">Team Members</MudText>
+                            @foreach (var member in _execution.Members)
+                            {
+                                <MudChip Color="Color.Primary" Class="ma-1">@member.Name</MudChip>
+                            }
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudTabPanel>
+            
+            @if (_selectedStep != null)
+            {
+                <MudTabPanel Text="Current Step">
+                    <MudCard Elevation="0">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h5">@_selectedStep.Name</MudText>
+                                <MudText Typo="Typo.caption">
+                                    @if (_selectedStep.CompleteOn.HasValue)
+                                    {
+                                        <span>Completed on @_selectedStep.CompleteOn.Value.ToShortDateString()</span>
+                                    }
+                                    else if (_selectedStep.StartedOn.HasValue)
+                                    {
+                                        <span>Started on @_selectedStep.StartedOn.Value.ToShortDateString()</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Not started</span>
+                                    }
+                                </MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudGrid>
+                                <MudItem xs="12" md="6">
+                                    <MudCard Elevation="1" Class="mb-4">
+                                        <MudCardHeader>
+                                            <CardHeaderContent>
+                                                <MudText Typo="Typo.h6">Plan</MudText>
+                                            </CardHeaderContent>
+                                        </MudCardHeader>
+                                        <MudCardContent>
+                                            <MudText>@_selectedStep.Summary</MudText>
+                                            
+                                            @if (_selectedStep.Screenshot != null && _selectedStep.Screenshot.Length > 0)
+                                            {
+                                                <MudImage Src="@_fileService.GetImageDataUrl(_selectedStep.Screenshot)" 
+                                                        Alt="Plan screenshot" 
+                                                        Class="mt-4"
+                                                        Width="100%" 
+                                                        ObjectFit="ObjectFit.Cover" />
+                                            }
+                                        </MudCardContent>
+                                    </MudCard>
+                                    
+                                    @if (!_selectedStep.CompleteOn.HasValue)
+                                    {
+                                        <MudCard Elevation="1">
+                                            <MudCardHeader>
+                                                <CardHeaderContent>
+                                                    <MudText Typo="Typo.h6">Update Status</MudText>
+                                                </CardHeaderContent>
+                                            </MudCardHeader>
+                                            <MudCardContent>
+                                                @if (!_selectedStep.StartedOn.HasValue)
+                                                {
+                                                    <MudButton Variant="Variant.Filled" 
+                                                             Color="Color.Primary" 
+                                                             FullWidth="true"
+                                                             OnClick="@StartStep">
+                                                        Start Step
+                                                    </MudButton>
+                                                }
+                                                else
+                                                {
+                                                    <MudTextField @bind-Value="_selectedStep.ResultSummary"
+                                                                Label="Result Summary" 
+                                                                Lines="3" 
+                                                                Class="mb-3" />
+                                                    
+                                                    <MudText Class="mb-2">Upload Result Screenshot</MudText>
+                                                    <ScreenshotUploader @bind-ImageData="_selectedStep.ResultScreenshot" />
+                                                    
+                                                    <MudButton Variant="Variant.Filled" 
+                                                             Color="Color.Success" 
+                                                             FullWidth="true"
+                                                             OnClick="@CompleteStep"
+                                                             Class="mt-3">
+                                                        Mark as Complete
+                                                    </MudButton>
+                                                }
+                                            </MudCardContent>
+                                        </MudCard>
+                                    }
+                                    else
+                                    {
+                                        <MudCard Elevation="1">
+                                            <MudCardHeader>
+                                                <CardHeaderContent>
+                                                    <MudText Typo="Typo.h6">Result</MudText>
+                                                </CardHeaderContent>
+                                            </MudCardHeader>
+                                            <MudCardContent>
+                                                <MudText>@_selectedStep.ResultSummary</MudText>
+                                                
+                                                @if (_selectedStep.ResultScreenshot != null && _selectedStep.ResultScreenshot.Length > 0)
+                                                {
+                                                    <MudImage Src="@_fileService.GetImageDataUrl(_selectedStep.ResultScreenshot)" 
+                                                            Alt="Result screenshot" 
+                                                            Class="mt-4"
+                                                            Width="100%" 
+                                                            ObjectFit="ObjectFit.Cover" />
+                                                }
+                                            </MudCardContent>
+                                        </MudCard>
+                                    }
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <StepDiscussion Step="@_selectedStep" />
+                                </MudItem>
+                            </MudGrid>
+                        </MudCardContent>
+                    </MudCard>
+                </MudTabPanel>
+            }
+        </MudTabs>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+    
+    [Parameter]
+    public int? PlanId { get; set; }
+    
+    private Execution _execution;
+    private ExecutionStep _selectedStep;
+    
+    [Inject] 
+    private FileService _fileService { get; set; }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        if (PlanId.HasValue)
+        {
+            // Creating a new execution from plan
+            _execution = await ExecutionService.CreateExecutionFromPlanAsync(PlanId.Value);
+            if (_execution != null)
+            {
+                Id = _execution.Id;
+                NavigationManager.NavigateTo($"/executions/{Id}", replace: true);
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/plans");
+                Snackbar.Add("Failed to create execution. Plan not found.", Severity.Error);
+            }
+        }
+        else if (Id.HasValue)
+        {
+            // Loading existing execution
+            _execution = await ExecutionService.GetExecutionAsync(Id.Value);
+            if (_execution == null)
+            {
+                NavigationManager.NavigateTo("/executions");
+                Snackbar.Add("Execution not found", Severity.Error);
+            }
+            
+            if (_execution?.Steps.Count > 0)
+            {
+                // Select first incomplete step, or the last step if all are complete
+                _selectedStep = _execution.Steps.FirstOrDefault(s => !s.CompleteOn.HasValue) ?? 
+                               _execution.Steps.Last();
+            }
+        }
+    }
+    
+    private void SelectStep(ExecutionStep step)
+    {
+        _selectedStep = step;
+    }
+    
+    private async Task StartStep()
+    {
+        _selectedStep.StartedOn = DateTime.Now;
+        await ExecutionService.UpdateExecutionStepAsync(_selectedStep);
+        Snackbar.Add("Step started", Severity.Info);
+    }
+    
+    private async Task CompleteStep()
+    {
+        _selectedStep.CompleteOn = DateTime.Now;
+        await ExecutionService.UpdateExecutionStepAsync(_selectedStep);
+        Snackbar.Add("Step completed", Severity.Success);
+        
+        // Select next incomplete step if available
+        var nextStep = _execution.Steps
+            .Where(s => !s.CompleteOn.HasValue && s.Id != _selectedStep.Id)
+            .OrderBy(s => s.Id)
+            .FirstOrDefault();
+            
+        if (nextStep != null)
+        {
+            _selectedStep = nextStep;
+        }
+    }
+    
+    private string GetStepIcon(ExecutionStep step)
+    {
+        if (step.CompleteOn.HasValue)
+            return Icons.Material.Filled.CheckCircle;
+        if (step.StartedOn.HasValue)
+            return Icons.Material.Filled.PlayCircle;
+        return Icons.Material.Filled.Circle;
+    }
+    
+    private Color GetStepColor(ExecutionStep step)
+    {
+        if (step.CompleteOn.HasValue)
+            return Color.Success;
+        if (step.StartedOn.HasValue)
+            return Color.Info;
+        return Color.Default;
+    }
+}
