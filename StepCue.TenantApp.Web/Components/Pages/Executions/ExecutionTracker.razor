@@ -103,6 +103,17 @@
                                         <MudCardContent>
                                             <MudText>@_selectedStep.Summary</MudText>
                                             
+                                            @if (_selectedStep.AssignedMembers != null && _selectedStep.AssignedMembers.Any())
+                                            {
+                                                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2">Assigned Members:</MudText>
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    @foreach (var member in _selectedStep.AssignedMembers)
+                                                    {
+                                                        <MudChip T="string" Color="Color.Secondary" Size="Size.Small">@member.Name</MudChip>
+                                                    }
+                                                </div>
+                                            }
+                                            
                                             @if (_selectedStep.Screenshot != null && _selectedStep.Screenshot.Length > 0)
                                             {
                                    @*              <MudImage Src="@_fileService.GetImageDataUrl(_selectedStep.Screenshot)" 

@@ -38,6 +38,27 @@
                                     <MudTextField @bind-Value="step.Name" Label="Step Name" Required="true" Class="mb-2" />
                                     <MudTextField @bind-Value="step.Summary" Label="Step Summary" Lines="3" Class="mb-2" />
                                     
+                                    <MudText Typo="Typo.subtitle2" Class="mb-2">Assigned Members</MudText>
+                                    @if (_plan.Members.Any())
+                                    {
+                                        <MudSelect T="PlanMember" MultiSelection="true" SelectedValues="step.AssignedMembers" 
+                                                   SelectedValuesChanged="(values) => UpdateAssignedMembers(step, values)"
+                                                   Label="Select Members" Variant="Variant.Outlined" Class="mb-2"
+                                                   ToStringFunc="@(m => string.IsNullOrEmpty(m?.Name) ? "Unnamed Member" : m.Name)">
+                                            @foreach (var member in _plan.Members)
+                                            {
+                                                var memberName = string.IsNullOrEmpty(member.Name) ? "Unnamed Member" : member.Name;
+                                                <MudSelectItem T="PlanMember" Value="@member">@memberName</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    }
+                                    else
+                                    {
+                                        <MudAlert Severity="Severity.Info" Class="mb-2">
+                                            Add members to the plan above to assign them to this step.
+                                        </MudAlert>
+                                    }
+                                    
                                     <MudText Typo="Typo.subtitle2" Class="mb-2">Screenshot</MudText>
                                     <ScreenshotUploader @bind-ImageData="step.Screenshot" />
                                     <MudButton Color="Color.Error" 
@@ -106,6 +127,11 @@
     private void AddStep()
     {
         _plan.Steps.Add(new PlanStep());
+    }
+
+    private void UpdateAssignedMembers(PlanStep step, IEnumerable<PlanMember> selectedMembers)
+    {
+        step.AssignedMembers = selectedMembers.ToList();
     }
 
     private async Task SavePlan()
