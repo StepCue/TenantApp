@@ -616,6 +616,7 @@
         {
             // Commit the current edit
             _table.SetEditingItem(null);
+            await Task.CompletedTask; // Satisfy async requirement
         }
     }
 
