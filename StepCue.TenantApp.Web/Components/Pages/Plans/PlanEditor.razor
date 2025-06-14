@@ -38,6 +38,16 @@
                                     <MudTextField @bind-Value="step.Name" Label="Step Name" Required="true" Class="mb-2" />
                                     <MudTextField @bind-Value="step.Summary" Label="Step Summary" Lines="3" Class="mb-2" />
                                     
+                                    <MudText Typo="Typo.subtitle2" Class="mb-2">Assigned Members</MudText>
+                                    <MudSelect T="int" MultiSelection="true" SelectedValues="step.AssignedMemberIds" 
+                                               SelectedValuesChanged="(values) => step.AssignedMemberIds = values.ToList()"
+                                               Label="Select Members" Variant="Variant.Outlined" Class="mb-2">
+                                        @foreach (var member in _plan.Members)
+                                        {
+                                            <MudSelectItem T="int" Value="@member.Id">@member.Name</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                    
                                     <MudText Typo="Typo.subtitle2" Class="mb-2">Screenshot</MudText>
                                     <ScreenshotUploader @bind-ImageData="step.Screenshot" />
                                     <MudButton Color="Color.Error" 
