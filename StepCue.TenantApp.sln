@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StepCue.TenantApp.Data", "S
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StepCue.TenantApp.Core", "StepCue.TenantApp.Core\StepCue.TenantApp.Core.csproj", "{AE001CF7-2DD9-4BBC-AEB3-4DC76BF6A968}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StepCue.TenantApp.Core.Tests", "StepCue.TenantApp.Core.Tests\StepCue.TenantApp.Core.Tests.csproj", "{B3BC59F8-03A5-4049-A28B-6E345F994D9C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{AE001CF7-2DD9-4BBC-AEB3-4DC76BF6A968}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AE001CF7-2DD9-4BBC-AEB3-4DC76BF6A968}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AE001CF7-2DD9-4BBC-AEB3-4DC76BF6A968}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B3BC59F8-03A5-4049-A28B-6E345F994D9C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B3BC59F8-03A5-4049-A28B-6E345F994D9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B3BC59F8-03A5-4049-A28B-6E345F994D9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B3BC59F8-03A5-4049-A28B-6E345F994D9C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
