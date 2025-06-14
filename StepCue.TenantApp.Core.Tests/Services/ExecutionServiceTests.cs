@@ -239,9 +239,9 @@ namespace StepCue.TenantApp.Core.Tests.Services
         }
 
         [Fact]
-        public async Task GetExecutionsQueryable_Members_BugDemonstration()
+        public async Task GetExecutionsQueryable_Members_ShouldBeIncluded()
         {
-            // This test demonstrates that Execution.Members are not included 
+            // This test verifies that Execution.Members are included 
             // in the GetExecutionsQueryable method
 
             // Arrange
@@ -275,9 +275,10 @@ namespace StepCue.TenantApp.Core.Tests.Services
             Assert.Single(results);
             var result = results.First();
 
-            // BUG: Execution.Members are not included in GetExecutionsQueryable
-            // So when we load fresh, the Members collection will be empty
-            Assert.Empty(result.Members);
+            // FIXED: Execution.Members are now included in GetExecutionsQueryable
+            Assert.Equal(2, result.Members.Count);
+            Assert.Contains(result.Members, m => m.Name == "Member 1" && m.EmailAddress == "member1@test.com");
+            Assert.Contains(result.Members, m => m.Name == "Member 2" && m.EmailAddress == "member2@test.com");
         }
     }
 }
