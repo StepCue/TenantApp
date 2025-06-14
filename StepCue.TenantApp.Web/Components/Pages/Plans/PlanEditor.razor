@@ -41,13 +41,14 @@
                                     <MudText Typo="Typo.subtitle2" Class="mb-2">Assigned Members</MudText>
                                     @if (_plan.Members.Any())
                                     {
-                                        <MudSelect T="string" MultiSelection="true" SelectedValues="GetAssignedMemberNames(step)" 
-                                                   SelectedValuesChanged="(values) => UpdateAssignedMemberNames(step, values)"
-                                                   Label="Select Members" Variant="Variant.Outlined" Class="mb-2">
+                                        <MudSelect T="PlanMember" MultiSelection="true" SelectedValues="step.AssignedMembers" 
+                                                   SelectedValuesChanged="(values) => UpdateAssignedMembers(step, values)"
+                                                   Label="Select Members" Variant="Variant.Outlined" Class="mb-2"
+                                                   ToStringFunc="@(m => string.IsNullOrEmpty(m?.Name) ? "Unnamed Member" : m.Name)">
                                             @foreach (var member in _plan.Members)
                                             {
                                                 var memberName = string.IsNullOrEmpty(member.Name) ? "Unnamed Member" : member.Name;
-                                                <MudSelectItem T="string" Value="@memberName">@memberName</MudSelectItem>
+                                                <MudSelectItem T="PlanMember" Value="@member">@memberName</MudSelectItem>
                                             }
                                         </MudSelect>
                                     }
@@ -128,14 +129,9 @@
         _plan.Steps.Add(new PlanStep());
     }
 
-    private IEnumerable<string> GetAssignedMemberNames(PlanStep step)
+    private void UpdateAssignedMembers(PlanStep step, IEnumerable<PlanMember> selectedMembers)
     {
-        return step.AssignedMemberNames ?? new List<string>();
-    }
-
-    private void UpdateAssignedMemberNames(PlanStep step, IEnumerable<string> selectedNames)
-    {
-        step.AssignedMemberNames = selectedNames.ToList();
+        step.AssignedMembers = selectedMembers.ToList();
     }
 
     private async Task SavePlan()

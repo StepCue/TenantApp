@@ -103,28 +103,13 @@
                                         <MudCardContent>
                                             <MudText>@_selectedStep.Summary</MudText>
                                             
-                                            @if ((_selectedStep.AssignedMemberIds != null && _selectedStep.AssignedMemberIds.Any()) ||
-                                                 (_selectedStep.AssignedMemberNames != null && _selectedStep.AssignedMemberNames.Any()))
+                                            @if (_selectedStep.AssignedMembers != null && _selectedStep.AssignedMembers.Any())
                                             {
                                                 <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2">Assigned Members:</MudText>
                                                 <div class="d-flex flex-wrap gap-1">
-                                                    @if (_selectedStep.AssignedMemberIds != null)
+                                                    @foreach (var member in _selectedStep.AssignedMembers)
                                                     {
-                                                        @foreach (var memberId in _selectedStep.AssignedMemberIds)
-                                                        {
-                                                            var member = _execution.Members.FirstOrDefault(m => m.Id == memberId);
-                                                            if (member != null)
-                                                            {
-                                                                <MudChip T="string" Color="Color.Secondary" Size="Size.Small">@member.Name</MudChip>
-                                                            }
-                                                        }
-                                                    }
-                                                    @if (_selectedStep.AssignedMemberNames != null)
-                                                    {
-                                                        @foreach (var memberName in _selectedStep.AssignedMemberNames)
-                                                        {
-                                                            <MudChip T="string" Color="Color.Secondary" Size="Size.Small">@memberName</MudChip>
-                                                        }
+                                                        <MudChip T="string" Color="Color.Secondary" Size="Size.Small">@member.Name</MudChip>
                                                     }
                                                 </div>
                                             }
