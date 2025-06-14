@@ -377,7 +377,7 @@
     private bool _showMembersColumn = true;
     private bool _showActionsColumn = true;
     
-    private List<PlanStep> _orderedSteps => _plan.Steps.OrderBy(s => s.Order).ToList();
+    private List<PlanStep> _orderedSteps => _plan.Steps;
 
     protected override async Task OnInitializedAsync()
     {
@@ -474,6 +474,17 @@
                 stepsWithoutOrder[i].Order = maxOrder + i + 1;
             }
         }
+        
+        // Sort the collection to maintain order
+        SortStepsCollection();
+    }
+
+    private void SortStepsCollection()
+    {
+        // Sort the collection in-place by Order
+        var sortedSteps = _plan.Steps.OrderBy(s => s.Order).ToList();
+        _plan.Steps.Clear();
+        _plan.Steps.AddRange(sortedSteps);
     }
 
     private void AddStep()
@@ -481,6 +492,7 @@
         var newOrder = _plan.Steps.Any() ? _plan.Steps.Max(s => s.Order) + 1 : 1;
         var newStep = new PlanStep { Order = newOrder };
         _plan.Steps.Add(newStep);
+        SortStepsCollection();
         StateHasChanged();
     }
     
@@ -498,6 +510,7 @@
         
         var newStep = new PlanStep { Order = targetOrder };
         _plan.Steps.Add(newStep);
+        SortStepsCollection();
         StateHasChanged();
     }
     
@@ -515,6 +528,7 @@
         
         var newStep = new PlanStep { Order = targetOrder };
         _plan.Steps.Add(newStep);
+        SortStepsCollection();
         StateHasChanged();
     }
 
@@ -529,6 +543,7 @@
             orderedSteps[i].Order = i + 1;
         }
         
+        SortStepsCollection();
         StateHasChanged();
     }
 
@@ -618,6 +633,7 @@
 
             _draggedStep.Order = targetOrder;
             _draggedStep = null;
+            SortStepsCollection();
             StateHasChanged();
         }
     }
