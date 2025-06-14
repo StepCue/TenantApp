@@ -14,30 +14,22 @@ namespace StepCue.TenantApp.Core.Services
             _context = context;
         }
 
-        public async Task<List<Execution>> GetExecutionsAsync()
+        public IQueryable<Execution> GetExecutionsQueryable()
         {
-            return await _context.Executions
+            return _context.Executions
                 .Include(e => e.Plan)
-                .Include(e => e.Steps)
-                .ToListAsync();
+                .Include(e => e.Steps).ThenInclude(i => i.AssignedMembers);
+
         }
 
         public async Task<Execution> GetExecutionAsync(int id)
         {
-            return await _context.Executions
-                .Include(e => e.Plan)
-                .Include(e => e.Steps)
-                .Include(e => e.Members)
+
+
+            return await GetExecutionsQueryable()
                 .FirstOrDefaultAsync(e => e.Id == id);
         }
 
-        public async Task<ExecutionStep> GetExecutionStepAsync(int id)
-        {
-            return await _context.ExecutionSteps
-                .Include(s => s.Messages)
-                    .ThenInclude(m => m.Author)
-                .FirstOrDefaultAsync(s => s.Id == id);
-        }
 
         public async Task<Execution> CreateExecutionFromPlanAsync(int planId)
         {
