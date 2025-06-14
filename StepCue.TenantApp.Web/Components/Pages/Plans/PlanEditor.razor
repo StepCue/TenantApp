@@ -4,11 +4,14 @@
 @using StepCue.TenantApp.Data.Models.Planning
 @using StepCue.TenantApp.Web.Services
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
 @inject PlanService PlanService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
+@implements IAsyncDisposable
 
 <style>
     .highlighted-step {
@@ -104,21 +107,20 @@
                             </MudMenu>
                         </div>
                         
-                        <div @onkeydown="HandleKeyDown" tabindex="0" style="outline: none;">
-                            <MudTable @ref="_table" 
-                                     Items="@_orderedSteps" 
-                                     Hover="true" 
-                                     Breakpoint="Breakpoint.Sm"
-                                     Class="step-table"
-                                     CanCancelEdit="true"
-                                     CommitEditTooltip="Save changes"
-                                     CancelEditTooltip="Cancel"
-                                     RowEditPreview="BackupItem"
-                                     RowEditCancel="ResetItemToOriginalValues"
-                                     RowEditCommit="ItemHasBeenCommitted"
-                                     IsEditRowSwitchingBlocked="false"
-                                     ApplyButtonPosition="TableApplyButtonPosition.End"
-                                     EditButtonPosition="TableEditButtonPosition.End">
+                        <MudTable @ref="_table" 
+                                 Items="@_orderedSteps" 
+                                 Hover="true" 
+                                 Breakpoint="Breakpoint.Sm"
+                                 Class="step-table"
+                                 CanCancelEdit="true"
+                                 CommitEditTooltip="Save changes"
+                                 CancelEditTooltip="Cancel"
+                                 RowEditPreview="BackupItem"
+                                 RowEditCancel="ResetItemToOriginalValues"
+                                 RowEditCommit="ItemHasBeenCommitted"
+                                 IsEditRowSwitchingBlocked="false"
+                                 ApplyButtonPosition="TableApplyButtonPosition.End"
+                                 EditButtonPosition="TableEditButtonPosition.End">
                                 <ColGroup>
                                     <col style="width: 60px;" />
                                     <col />
@@ -305,7 +307,6 @@
                                     </MudText>
                                 </NoRecordsContent>
                             </MudTable>
-                        </div>
                         
                         <div Class="d-flex gap-2 mt-3">
                             <MudButton StartIcon="@Icons.Material.Filled.Add" 
@@ -367,6 +368,8 @@
     private int _selectedStepIndex = -1;
     private PlanStep _stepBeforeEdit = new();
     private PlanStep? _draggedStep;
+    private IJSObjectReference? _keyboardModule;
+    private DotNetObjectReference<PlanEditor>? _dotNetRef;
     
     // Column visibility settings
     private bool _showOrderColumn = true;
@@ -395,6 +398,69 @@
         }
         
         _isLoading = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            _keyboardModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/keyboard-handler.js");
+            await _keyboardModule.InvokeVoidAsync("setupKeyboardHandler", _dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleKeyboardEvent(string key, bool shiftKey, bool ctrlKey, bool altKey)
+    {
+        // Only handle keyboard shortcuts when not in an input/textarea/contenteditable
+        if (await IsTypingInInput()) return;
+
+        switch (key)
+        {
+            case "Enter":
+                if (shiftKey)
+                {
+                    AddStepBelow();
+                }
+                else
+                {
+                    AddStep();
+                }
+                break;
+            case "Insert":
+                AddStepAbove();
+                break;
+        }
+    }
+
+    private async Task<bool> IsTypingInInput()
+    {
+        try
+        {
+            return await _keyboardModule!.InvokeAsync<bool>("isTypingInInput");
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_keyboardModule != null)
+            {
+                await _keyboardModule.InvokeVoidAsync("cleanup");
+                await _keyboardModule.DisposeAsync();
+            }
+            _dotNetRef?.Dispose();
+        }
+        catch
+        {
+            // Ignore cleanup errors
+        }
     }
     
     private void EnsureStepOrdering()
@@ -507,26 +573,6 @@
     private void ItemHasBeenCommitted(object element)
     {
         // Nothing special needed here as the item is already updated
-    }
-
-    private void HandleKeyDown(KeyboardEventArgs e)
-    {
-        switch (e.Key)
-        {
-            case "Enter":
-                if (e.ShiftKey)
-                {
-                    AddStepBelow();
-                }
-                else
-                {
-                    AddStep();
-                }
-                break;
-            case "Insert":
-                AddStepAbove();
-                break;
-        }
     }
 
     // Drag and Drop functionality
