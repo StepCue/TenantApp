@@ -9,6 +9,7 @@ namespace StepCue.TenantApp.Data.Models.Execution
 {
     public class ExecutionMember : PlanMember
     {
-
+        public int ExecutionId { get; set; }
+        public Execution Execution { get; set; }
     }
 }

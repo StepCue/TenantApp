@@ -14,7 +14,7 @@ namespace StepCue.TenantApp.Data.Models.Execution
         public ExecutionStep ExecutionStep { get; set; }
         public ExecutionMember Author { get; set; }
         public int AuthorId { get; set; }
-        public string Message { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
         public DateTime CreatedOn { get; set; } = DateTime.Now;
     }
 }
