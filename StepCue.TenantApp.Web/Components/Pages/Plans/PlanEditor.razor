@@ -586,7 +586,7 @@
         step.AssignedMembers = _stepBeforeEdit.AssignedMembers;
     }
 
-    private void ItemHasBeenCommitted(object element)
+    private async void ItemHasBeenCommitted(object element)
     {
         var step = (PlanStep)element;
         
@@ -594,6 +594,14 @@
         if (IsLastStep(step))
         {
             AddStep();
+            
+            // Small delay to ensure the new step is rendered, then auto-edit it
+            await Task.Delay(100);
+            var newStep = _orderedSteps.LastOrDefault();
+            if (newStep != null && newStep != step)
+            {
+                _table.SetEditingItem(newStep);
+            }
         }
     }
     
@@ -608,19 +616,6 @@
         {
             // Commit the current edit
             _table.SetEditingItem(null);
-            
-            // Check if this was the last step and auto-create a new one
-            if (IsLastStep(step))
-            {
-                AddStep();
-                await Task.Delay(100); // Small delay to ensure the new step is rendered
-                // Auto-edit the new step
-                var newStep = _orderedSteps.LastOrDefault();
-                if (newStep != null)
-                {
-                    _table.SetEditingItem(newStep);
-                }
-            }
         }
     }
 
