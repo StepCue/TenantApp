@@ -63,5 +63,37 @@ namespace StepCue.TenantApp.Core.Tests.Services
             Assert.NotNull(nextStep);
             Assert.Equal(3, nextStep.Id);
         }
+
+        [Fact]
+        public void DemonstrateOriginalProblem_WithoutNullCheck_WouldThrowException()
+        {
+            // Arrange - Create an execution with a null step
+            var execution = new Execution
+            {
+                Steps = new List<ExecutionStep>
+                {
+                    new ExecutionStep { Id = 1, CompleteOn = DateTime.Now },
+                    null, // This would cause NullReferenceException
+                    new ExecutionStep { Id = 3, CompleteOn = null }
+                }
+            };
+
+            // Act & Assert - Demonstrate that without null check, this would throw
+            Assert.Throws<NullReferenceException>(() =>
+            {
+                // This is the original problematic code pattern
+                var nextStep = execution.Steps
+                    .Where(s => !s.CompleteOn.HasValue) // This would throw on null step
+                    .FirstOrDefault();
+            });
+
+            // But with null check, it works fine
+            var safeNextStep = execution.Steps
+                .Where(s => s != null && !s.CompleteOn.HasValue)
+                .FirstOrDefault();
+            
+            Assert.NotNull(safeNextStep);
+            Assert.Equal(3, safeNextStep.Id);
+        }
     }
 }
