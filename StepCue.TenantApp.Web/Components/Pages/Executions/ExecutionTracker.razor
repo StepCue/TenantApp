@@ -37,6 +37,12 @@
         background-color: var(--mud-palette-primary-lighten) !important;
     }
     
+    .timeline-item.current .timeline-content {
+        border: 3px solid var(--mud-palette-warning) !important;
+        background-color: var(--mud-palette-warning-lighten) !important;
+        box-shadow: 0 4px 20px rgba(255, 193, 7, 0.2) !important;
+    }
+    
     .timeline-indicator {
         position: absolute;
         left: -2rem;
@@ -140,11 +146,12 @@
                         var isStarted = step.StartedOn.HasValue;
                         var canStart = CanStartStep(step);
                         var isHighlighted = IsStepHighlighted(step);
+                        var isCurrent = IsCurrentStep(step);
                         var shouldShow = _selectedMemberToHighlight == null || isHighlighted;
                         
                         @if (shouldShow)
                         {
-                        <div class="timeline-item @(isCompleted ? "completed" : isStarted ? "started" : !canStart ? "disabled" : "") @(isHighlighted ? "highlighted" : "")">
+                        <div class="timeline-item @(isCompleted ? "completed" : isStarted ? "started" : !canStart ? "disabled" : "") @(isHighlighted ? "highlighted" : "") @(isCurrent ? "current" : "")">
                             <!-- Timeline indicator -->
                             <div class="timeline-indicator">
                                 <MudIcon Icon="@GetStepIcon(step)" 
@@ -200,20 +207,47 @@
                                     }
                                     
                                     <div class="d-flex justify-space-between align-center mt-3">
-                                        @if (isCompleted)
-                                        {
-                                            <MudText Typo="Typo.caption">Completed on @step.CompleteOn.Value.ToShortDateString()</MudText>
-                                        }
-                                        else if (isStarted)
-                                        {
-                                            <MudText Typo="Typo.caption">Started on @step.StartedOn.Value.ToShortDateString()</MudText>
-                                        }
-                                        else
-                                        {
-                                            <MudText Typo="Typo.caption">Not started</MudText>
-                                        }
+                                        <div>
+                                            @if (isCompleted)
+                                            {
+                                                <MudText Typo="Typo.caption">Completed on @step.CompleteOn.Value.ToShortDateString()</MudText>
+                                            }
+                                            else if (isStarted)
+                                            {
+                                                <MudText Typo="Typo.caption">Started on @step.StartedOn.Value.ToShortDateString()</MudText>
+                                            }
+                                            else
+                                            {
+                                                <MudText Typo="Typo.caption">Not started</MudText>
+                                            }
+                                        </div>
                                         
-                                        <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">Click for details</MudText>
+                                        <div class="d-flex gap-2 align-center">
+                                            @if (!isCompleted && canStart)
+                                            {
+                                                @if (!isStarted)
+                                                {
+                                                    <MudButton Variant="Variant.Filled" 
+                                                             Color="Color.Primary" 
+                                                             Size="Size.Small"
+                                                             OnClick="@(async () => await StartStepInternal(step))"
+                                                             onclick:stopPropagation="true">
+                                                        Start
+                                                    </MudButton>
+                                                }
+                                                else
+                                                {
+                                                    <MudButton Variant="Variant.Filled" 
+                                                             Color="Color.Success" 
+                                                             Size="Size.Small"
+                                                             OnClick="@(() => OpenStepCompletionDialog(step))"
+                                                             onclick:stopPropagation="true">
+                                                        Complete
+                                                    </MudButton>
+                                                }
+                                            }
+                                            <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">Click for details</MudText>
+                                        </div>
                                     </div>
                                 </MudCardContent>
                             </MudCard>
@@ -376,6 +410,52 @@
     </DialogActions>
 </MudDialog>
 
+<!-- Step Completion Dialog -->
+<MudDialog @bind-Visible="_completionDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Medium, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h5">Complete Step: @_completionStep?.Name</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_completionStep != null)
+        {
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_completionResultSummary"
+                                Label="Results of the change" 
+                                Lines="3" 
+                                Class="mb-3"
+                                Required="true"
+                                HelperText="Describe what was accomplished in this step" />
+                    
+                    <MudTextField @bind-Value="_completionWentWell"
+                                Label="What went well" 
+                                Lines="3" 
+                                Class="mb-3"
+                                HelperText="Highlight positive aspects and successes" />
+                    
+                    <MudTextField @bind-Value="_completionCouldBeBetter"
+                                Label="What could be better" 
+                                Lines="3" 
+                                Class="mb-3"
+                                HelperText="Note areas for improvement or challenges faced" />
+                    
+                    <MudText Class="mb-2">Screenshot Evidence</MudText>
+                    <ScreenshotUploader @bind-ImageData="_completionScreenshot" />
+                </MudItem>
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseCompletionDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" 
+                 Color="Color.Success" 
+                 OnClick="SubmitStepCompletion"
+                 Disabled="@(string.IsNullOrWhiteSpace(_completionResultSummary))">
+            Complete Step
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
 @code {
     [Parameter]
     public int? Id { get; set; }
@@ -388,6 +468,14 @@
     private ExecutionMember? _selectedMemberToHighlight;
     private bool _stepDialogVisible = false;
     private ExecutionStep _dialogStep;
+    
+    // Completion dialog fields
+    private bool _completionDialogVisible = false;
+    private ExecutionStep _completionStep;
+    private string _completionResultSummary = string.Empty;
+    private string _completionWentWell = string.Empty;
+    private string _completionCouldBeBetter = string.Empty;
+    private byte[]? _completionScreenshot;
     
     [Inject] 
     private FileService _fileService { get; set; }
@@ -562,5 +650,69 @@
             return false;
             
         return step.AssignedMembers.Any(m => m.Id == _selectedMemberToHighlight.Id);
+    }
+    
+    private bool IsCurrentStep(ExecutionStep step)
+    {
+        // Current step is the first incomplete step that can be started
+        if (step.CompleteOn.HasValue) return false; // Already completed
+        
+        var firstIncompleteStep = _execution.Steps
+            .Where(s => !s.CompleteOn.HasValue && CanStartStep(s))
+            .OrderBy(s => s.Id)
+            .FirstOrDefault();
+            
+        return firstIncompleteStep?.Id == step.Id;
+    }
+    
+    private void OpenStepCompletionDialog(ExecutionStep step)
+    {
+        _completionStep = step;
+        _completionResultSummary = step.ResultSummary ?? string.Empty;
+        _completionWentWell = step.WhatWentWell ?? string.Empty;
+        _completionCouldBeBetter = step.WhatCouldBeBetter ?? string.Empty;
+        _completionScreenshot = step.ResultScreenshot;
+        _completionDialogVisible = true;
+    }
+    
+    private void CloseCompletionDialog()
+    {
+        _completionDialogVisible = false;
+        _completionStep = null;
+        _completionResultSummary = string.Empty;
+        _completionWentWell = string.Empty;
+        _completionCouldBeBetter = string.Empty;
+        _completionScreenshot = null;
+    }
+    
+    private async Task SubmitStepCompletion()
+    {
+        if (_completionStep == null || string.IsNullOrWhiteSpace(_completionResultSummary))
+            return;
+            
+        _completionStep.CompleteOn = DateTime.Now;
+        _completionStep.ResultSummary = _completionResultSummary;
+        _completionStep.WhatWentWell = _completionWentWell;
+        _completionStep.WhatCouldBeBetter = _completionCouldBeBetter;
+        _completionStep.ResultScreenshot = _completionScreenshot;
+        
+        await ExecutionService.UpdateExecutionStepAsync(_completionStep);
+        Snackbar.Add("Step completed successfully", Severity.Success);
+        
+        CloseCompletionDialog();
+        
+        // Select next incomplete step if available and we're working with the main selected step
+        if (_completionStep == _selectedStep)
+        {
+            var nextStep = _execution.Steps
+                .Where(s => !s.CompleteOn.HasValue && s.Id != _completionStep.Id)
+                .OrderBy(s => s.Id)
+                .FirstOrDefault();
+                
+            if (nextStep != null)
+            {
+                _selectedStep = nextStep;
+            }
+        }
     }
 }
