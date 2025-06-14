@@ -200,6 +200,47 @@ namespace StepCue.TenantApp.Core.Tests.Services
         }
 
         [Fact]
+        public async Task CreateExecutionFromPlanAsync_ShouldCopyStepOrderFromPlan()
+        {
+            // Arrange
+            var plan = new Plan
+            {
+                Name = "Test Plan",
+                Steps = new List<PlanStep>
+                {
+                    new PlanStep { Name = "Step 1", Order = 3, Summary = "First step" },
+                    new PlanStep { Name = "Step 2", Order = 1, Summary = "Second step" },
+                    new PlanStep { Name = "Step 3", Order = 2, Summary = "Third step" }
+                }
+            };
+
+            Context.Plans.Add(plan);
+            await Context.SaveChangesAsync();
+
+            // Act
+            var result = await _executionService.CreateExecutionFromPlanAsync(plan.Id);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(3, result.Steps.Count);
+            
+            // Verify Order property is copied correctly
+            var step1 = result.Steps.First(s => s.Name == "Step 1");
+            var step2 = result.Steps.First(s => s.Name == "Step 2");
+            var step3 = result.Steps.First(s => s.Name == "Step 3");
+            
+            Assert.Equal(3, step1.Order);
+            Assert.Equal(1, step2.Order);
+            Assert.Equal(2, step3.Order);
+            
+            // Verify steps can be ordered by Order property
+            var orderedSteps = result.Steps.OrderBy(s => s.Order).ToList();
+            Assert.Equal("Step 2", orderedSteps[0].Name);
+            Assert.Equal("Step 3", orderedSteps[1].Name);
+            Assert.Equal("Step 1", orderedSteps[2].Name);
+        }
+
+        [Fact]
         public async Task CreateExecutionFromPlanAsync_AssignedMembers_BugDemonstration()
         {
             // This test demonstrates that AssignedMembers from PlanStep 

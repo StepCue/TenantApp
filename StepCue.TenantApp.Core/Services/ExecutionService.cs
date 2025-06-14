@@ -66,7 +66,8 @@ namespace StepCue.TenantApp.Core.Services
                 {
                     Name = step.Name,
                     Summary = step.Summary,
-                    Screenshot = step.Screenshot
+                    Screenshot = step.Screenshot,
+                    Order = step.Order
                 });
             }
 
