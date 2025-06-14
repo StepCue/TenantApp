@@ -75,6 +75,35 @@
                     }
                     
                     <MudPaper Class="pa-4 mt-2" Elevation="0">
+                        <div Class="d-flex justify-space-between align-center mb-3">
+                            <MudText Typo="Typo.h6">Steps Table</MudText>
+                            <MudMenu EndIcon="@Icons.Material.Filled.Visibility" 
+                                    Label="Column Visibility" 
+                                    Variant="Variant.Outlined" 
+                                    Size="Size.Small">
+                                <MudMenuItem>
+                                    <MudCheckBox T="bool" @bind-Checked="_showOrderColumn" 
+                                                Label="Order" 
+                                                Size="Size.Small" />
+                                </MudMenuItem>
+                                <MudMenuItem>
+                                    <MudCheckBox T="bool" @bind-Checked="_showNameColumn" 
+                                                Label="Name" 
+                                                Size="Size.Small" />
+                                </MudMenuItem>
+                                <MudMenuItem>
+                                    <MudCheckBox T="bool" @bind-Checked="_showMembersColumn" 
+                                                Label="Assigned Members" 
+                                                Size="Size.Small" />
+                                </MudMenuItem>
+                                <MudMenuItem>
+                                    <MudCheckBox T="bool" @bind-Checked="_showActionsColumn" 
+                                                Label="Actions" 
+                                                Size="Size.Small" />
+                                </MudMenuItem>
+                            </MudMenu>
+                        </div>
+                        
                         <div @onkeydown="HandleKeyDown" tabindex="0" style="outline: none;">
                             <MudTable @ref="_table" 
                                      Items="@_orderedSteps" 
@@ -98,131 +127,177 @@
                                     <col style="width: 120px;" />
                                 </ColGroup>
                                 <HeaderContent>
-                                    <MudTh>Order</MudTh>
-                                    <MudTh>Name</MudTh>
-                                    <MudTh>Assigned Members</MudTh>
-                                    <MudTh>Actions</MudTh>
-                                    <MudTh></MudTh>
+                                    @if (_showOrderColumn)
+                                    {
+                                        <MudTh>Order</MudTh>
+                                    }
+                                    @if (_showNameColumn)
+                                    {
+                                        <MudTh>Name</MudTh>
+                                    }
+                                    @if (_showMembersColumn)
+                                    {
+                                        <MudTh>Assigned Members</MudTh>
+                                    }
+                                    @if (_showActionsColumn)
+                                    {
+                                        <MudTh>Actions</MudTh>
+                                        <MudTh></MudTh>
+                                    }
                                 </HeaderContent>
                                 <RowTemplate>
                                     @{
                                         var isHighlighted = IsStepHighlighted(context);
                                         var rowClass = isHighlighted ? "highlighted-step" : "";
                                     }
-                                    <MudTd DataLabel="Order" Class="@rowClass">
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            <MudIconButton Icon="@Icons.Material.Filled.DragIndicator" 
-                                                          Size="Size.Small" 
-                                                          Style="cursor: move;" />
-                                            @(context.Order)
-                                        </div>
-                                    </MudTd>
-                                    <MudTd DataLabel="Name" Class="@rowClass">
-                                        @if (string.IsNullOrEmpty(context.Name))
-                                        {
-                                            <MudText Typo="Typo.body2" Style="font-style: italic; color: var(--mud-palette-text-secondary);">
-                                                New Step - Click to edit
-                                            </MudText>
-                                        }
-                                        else
-                                        {
-                                            @context.Name
-                                        }
-                                    </MudTd>
-                                    <MudTd DataLabel="Assigned Members" Class="@rowClass">
-                                        @if (context.AssignedMembers.Any())
-                                        {
-                                            <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-                                                @foreach (var member in context.AssignedMembers.Take(3))
-                                                {
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary">
-                                                        @(string.IsNullOrEmpty(member.Name) ? "Unnamed" : member.Name)
-                                                    </MudChip>
-                                                }
-                                                @if (context.AssignedMembers.Count > 3)
-                                                {
-                                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
-                                                        +@(context.AssignedMembers.Count - 3) more
-                                                    </MudChip>
-                                                }
+                                    @if (_showOrderColumn)
+                                    {
+                                        <MudTd DataLabel="Order" Class="@rowClass">
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <MudIconButton Icon="@Icons.Material.Filled.DragIndicator" 
+                                                              Size="Size.Small" 
+                                                              Style="cursor: move;" 
+                                                              @ondragstart="@((DragEventArgs e) => OnDragStart(e, context))"
+                                                              @ondrop="@((DragEventArgs e) => OnDrop(e, context))"
+                                                              @ondragover="@OnDragOver"
+                                                              @ondragenter="@OnDragEnter"
+                                                              draggable="true" />
+                                                @(context.Order)
                                             </div>
-                                        }
-                                        else
-                                        {
-                                            <MudText Typo="Typo.caption" Style="font-style: italic;">
-                                                No members assigned
-                                            </MudText>
-                                        }
-                                    </MudTd>
-                                    <MudTd DataLabel="Actions" Class="@rowClass">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" 
-                                                      Size="Size.Small" 
-                                                      Color="Color.Primary"
-                                                      OnClick="@(() => OpenStepEditor(context))" />
-                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" 
-                                                      Size="Size.Small" 
-                                                      Color="Color.Error"
-                                                      OnClick="@(() => RemoveStep(context))" />
-                                    </MudTd>
-                                    <MudTd Class="@rowClass">
-                                        <MudButton Variant="Variant.Text" 
-                                                  StartIcon="@Icons.Material.Filled.TableRows" 
-                                                  OnClick="@(() => _table.SetEditingItem(context))">
-                                            Edit Name
-                                        </MudButton>
-                                    </MudTd>
+                                        </MudTd>
+                                    }
+                                    @if (_showNameColumn)
+                                    {
+                                        <MudTd DataLabel="Name" Class="@rowClass">
+                                            @if (string.IsNullOrEmpty(context.Name))
+                                            {
+                                                <MudText Typo="Typo.body2" Style="font-style: italic; color: var(--mud-palette-text-secondary);">
+                                                    New Step - Click to edit
+                                                </MudText>
+                                            }
+                                            else
+                                            {
+                                                @context.Name
+                                            }
+                                        </MudTd>
+                                    }
+                                    @if (_showMembersColumn)
+                                    {
+                                        <MudTd DataLabel="Assigned Members" Class="@rowClass">
+                                            @if (context.AssignedMembers.Any())
+                                            {
+                                                <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                                                    @foreach (var member in context.AssignedMembers.Take(3))
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary">
+                                                            @(string.IsNullOrEmpty(member.Name) ? "Unnamed" : member.Name)
+                                                        </MudChip>
+                                                    }
+                                                    @if (context.AssignedMembers.Count > 3)
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                                            +@(context.AssignedMembers.Count - 3) more
+                                                        </MudChip>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <MudText Typo="Typo.caption" Style="font-style: italic;">
+                                                    No members assigned
+                                                </MudText>
+                                            }
+                                        </MudTd>
+                                    }
+                                    @if (_showActionsColumn)
+                                    {
+                                        <MudTd DataLabel="Actions" Class="@rowClass">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                                          Size="Size.Small" 
+                                                          Color="Color.Primary"
+                                                          OnClick="@(() => OpenStepEditor(context))" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                          Size="Size.Small" 
+                                                          Color="Color.Error"
+                                                          OnClick="@(() => RemoveStep(context))" />
+                                        </MudTd>
+                                        <MudTd Class="@rowClass">
+                                            <MudButton Variant="Variant.Text" 
+                                                      StartIcon="@Icons.Material.Filled.TableRows" 
+                                                      OnClick="@(() => _table.SetEditingItem(context))">
+                                                Edit Name
+                                            </MudButton>
+                                        </MudTd>
+                                    }
                                 </RowTemplate>
                                 <RowEditingTemplate>
-                                    <MudTd DataLabel="Order">
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            <MudIconButton Icon="@Icons.Material.Filled.DragIndicator" 
-                                                          Size="Size.Small" 
-                                                          Style="cursor: move;" />
-                                            @(context.Order)
-                                        </div>
-                                    </MudTd>
-                                    <MudTd DataLabel="Name">
-                                        <MudTextField @bind-Value="@context.Name" 
-                                                     Required="true" 
-                                                     RequiredError="Step name is required"
-                                                     Variant="Variant.Text" />
-                                    </MudTd>
-                                    <MudTd DataLabel="Assigned Members">
-                                        @if (context.AssignedMembers.Any())
-                                        {
-                                            <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-                                                @foreach (var member in context.AssignedMembers.Take(3))
-                                                {
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary">
-                                                        @(string.IsNullOrEmpty(member.Name) ? "Unnamed" : member.Name)
-                                                    </MudChip>
-                                                }
-                                                @if (context.AssignedMembers.Count > 3)
-                                                {
-                                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
-                                                        +@(context.AssignedMembers.Count - 3) more
-                                                    </MudChip>
-                                                }
+                                    @if (_showOrderColumn)
+                                    {
+                                        <MudTd DataLabel="Order">
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <MudIconButton Icon="@Icons.Material.Filled.DragIndicator" 
+                                                              Size="Size.Small" 
+                                                              Style="cursor: move;" 
+                                                              @ondragstart="@((DragEventArgs e) => OnDragStart(e, context))"
+                                                              @ondrop="@((DragEventArgs e) => OnDrop(e, context))"
+                                                              @ondragover="@OnDragOver"
+                                                              @ondragenter="@OnDragEnter"
+                                                              draggable="true" />
+                                                @(context.Order)
                                             </div>
-                                        }
-                                        else
-                                        {
-                                            <MudText Typo="Typo.caption" Style="font-style: italic;">
-                                                No members assigned
-                                            </MudText>
-                                        }
-                                    </MudTd>
-                                    <MudTd DataLabel="Actions">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" 
-                                                      Size="Size.Small" 
-                                                      Color="Color.Primary"
-                                                      OnClick="@(() => OpenStepEditor(context))" />
-                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" 
-                                                      Size="Size.Small" 
-                                                      Color="Color.Error"
-                                                      OnClick="@(() => RemoveStep(context))" />
-                                    </MudTd>
-                                    <MudTd></MudTd>
+                                        </MudTd>
+                                    }
+                                    @if (_showNameColumn)
+                                    {
+                                        <MudTd DataLabel="Name">
+                                            <MudTextField @bind-Value="@context.Name" 
+                                                         Required="true" 
+                                                         RequiredError="Step name is required"
+                                                         Variant="Variant.Text" />
+                                        </MudTd>
+                                    }
+                                    @if (_showMembersColumn)
+                                    {
+                                        <MudTd DataLabel="Assigned Members">
+                                            @if (context.AssignedMembers.Any())
+                                            {
+                                                <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                                                    @foreach (var member in context.AssignedMembers.Take(3))
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary">
+                                                            @(string.IsNullOrEmpty(member.Name) ? "Unnamed" : member.Name)
+                                                        </MudChip>
+                                                    }
+                                                    @if (context.AssignedMembers.Count > 3)
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                                            +@(context.AssignedMembers.Count - 3) more
+                                                        </MudChip>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <MudText Typo="Typo.caption" Style="font-style: italic;">
+                                                    No members assigned
+                                                </MudText>
+                                            }
+                                        </MudTd>
+                                    }
+                                    @if (_showActionsColumn)
+                                    {
+                                        <MudTd DataLabel="Actions">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                                          Size="Size.Small" 
+                                                          Color="Color.Primary"
+                                                          OnClick="@(() => OpenStepEditor(context))" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                          Size="Size.Small" 
+                                                          Color="Color.Error"
+                                                          OnClick="@(() => RemoveStep(context))" />
+                                        </MudTd>
+                                        <MudTd></MudTd>
+                                    }
                                 </RowEditingTemplate>
                                 <NoRecordsContent>
                                     <MudText Align="Align.Center" Class="pa-4">
@@ -291,6 +366,13 @@
     private PlanMember? _selectedMemberToHighlight;
     private int _selectedStepIndex = -1;
     private PlanStep _stepBeforeEdit = new();
+    private PlanStep? _draggedStep;
+    
+    // Column visibility settings
+    private bool _showOrderColumn = true;
+    private bool _showNameColumn = true;
+    private bool _showMembersColumn = true;
+    private bool _showActionsColumn = true;
     
     private List<PlanStep> _orderedSteps => _plan.Steps.OrderBy(s => s.Order).ToList();
 
@@ -444,6 +526,53 @@
             case "Insert":
                 AddStepAbove();
                 break;
+        }
+    }
+
+    // Drag and Drop functionality
+    private void OnDragStart(DragEventArgs e, PlanStep step)
+    {
+        _draggedStep = step;
+        e.DataTransfer.EffectAllowed = "move";
+    }
+
+    private void OnDragOver(DragEventArgs e)
+    {
+        e.DataTransfer.DropEffect = "move";
+    }
+
+    private void OnDragEnter(DragEventArgs e)
+    {
+        e.DataTransfer.DropEffect = "move";
+    }
+
+    private void OnDrop(DragEventArgs e, PlanStep targetStep)
+    {
+        if (_draggedStep != null && _draggedStep != targetStep)
+        {
+            var draggedOrder = _draggedStep.Order;
+            var targetOrder = targetStep.Order;
+
+            if (draggedOrder < targetOrder)
+            {
+                // Moving down - shift items between draggedOrder and targetOrder up
+                foreach (var step in _plan.Steps.Where(s => s.Order > draggedOrder && s.Order <= targetOrder))
+                {
+                    step.Order--;
+                }
+            }
+            else if (draggedOrder > targetOrder)
+            {
+                // Moving up - shift items between targetOrder and draggedOrder down
+                foreach (var step in _plan.Steps.Where(s => s.Order >= targetOrder && s.Order < draggedOrder))
+                {
+                    step.Order++;
+                }
+            }
+
+            _draggedStep.Order = targetOrder;
+            _draggedStep = null;
+            StateHasChanged();
         }
     }
 
