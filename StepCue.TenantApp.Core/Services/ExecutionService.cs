@@ -1,23 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using StepCue.TenantApp.Data;
 using StepCue.TenantApp.Data.Models.Execution;
-using StepCue.TenantApp.Data.Models.Planning;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
-namespace StepCue.TenantApp.Web.Services
+namespace StepCue.TenantApp.Core.Services
 {
     public class ExecutionService
     {
         private readonly DataContext _context;
-        private readonly FileService _fileService;
 
-        public ExecutionService(DataContext context, FileService fileService)
+
+        public ExecutionService(DataContext context)
         {
             _context = context;
-            _fileService = fileService;
         }
 
         public async Task<List<Execution>> GetExecutionsAsync()

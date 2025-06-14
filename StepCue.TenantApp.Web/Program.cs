@@ -1,5 +1,6 @@
 using MudBlazor.Services;
 using Microsoft.EntityFrameworkCore;
+using StepCue.TenantApp.Core.Services;
 using StepCue.TenantApp.Data;
 using StepCue.TenantApp.Web.Components;
 using StepCue.TenantApp.Web.Services;

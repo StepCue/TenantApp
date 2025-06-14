@@ -15,6 +15,7 @@
 
 
   <ItemGroup>
+    <ProjectReference Include="..\StepCue.TenantApp.Core\StepCue.TenantApp.Core.csproj" />
     <ProjectReference Include="..\StepCue.TenantApp.Data\StepCue.TenantApp.Data.csproj" />
   </ItemGroup>
 </Project>
