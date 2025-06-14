@@ -100,13 +100,15 @@
             <MudCardContent>
                 <MudText Typo="Typo.h6" Class="mb-3">Overall Progress</MudText>
                 <MudProgressLinear Color="Color.Primary" Value="@GetExecutionProgress()" Class="mb-2" />
-                <MudText Typo="Typo.caption">@(_execution.Steps.Count(s => s.CompleteOn.HasValue)) of @_execution.Steps.Count steps completed</MudText>
+                <MudText Typo="Typo.caption">@(_execution.Steps.Where(s => s != null).Count(s => s.CompleteOn.HasValue)) of @(_execution.Steps.Where(s => s != null).Count()) steps completed</MudText>
                 
                 <!-- Horizontal step indicators -->
                 <div class="d-flex justify-center mt-3" style="gap: 8px;">
                     @for (int i = 0; i < _execution.Steps.Count; i++)
                     {
                         var step = _execution.Steps[i];
+                        if (step == null) continue;
+                        
                         var stepNumber = i + 1;
                         var isCompleted = step.CompleteOn.HasValue;
                         var isStarted = step.StartedOn.HasValue;
@@ -141,6 +143,8 @@
                     @for (int i = 0; i < _execution.Steps.Count; i++)
                     {
                         var step = _execution.Steps[i];
+                        if (step == null) continue;
+                        
                         var isLast = i == _execution.Steps.Count - 1;
                         var isCompleted = step.CompleteOn.HasValue;
                         var isStarted = step.StartedOn.HasValue;
@@ -255,7 +259,7 @@
                         }
                     }
                     
-                    @if (_selectedMemberToHighlight != null && !_execution.Steps.Any(s => IsStepHighlighted(s)))
+                    @if (_selectedMemberToHighlight != null && !_execution.Steps.Where(s => s != null).Any(s => IsStepHighlighted(s)))
                     {
                         <div class="text-center pa-4">
                             <MudText Typo="Typo.caption" Style="font-style: italic;">No steps assigned to this member</MudText>
@@ -510,8 +514,8 @@
             if (_execution?.Steps.Count > 0)
             {
                 // Select first incomplete step, or the last step if all are complete
-                _selectedStep = _execution.Steps.FirstOrDefault(s => !s.CompleteOn.HasValue) ?? 
-                               _execution.Steps.Last();
+                _selectedStep = _execution.Steps.Where(s => s != null).FirstOrDefault(s => !s.CompleteOn.HasValue) ?? 
+                               _execution.Steps.Where(s => s != null).LastOrDefault();
             }
         }
     }
@@ -552,8 +556,11 @@
     {
         if (_execution?.Steps == null || !_execution.Steps.Any()) return 0;
         
-        var completedSteps = _execution.Steps.Count(s => s.CompleteOn.HasValue);
-        return (double)completedSteps / _execution.Steps.Count * 100;
+        var validSteps = _execution.Steps.Where(s => s != null).ToList();
+        if (!validSteps.Any()) return 0;
+        
+        var completedSteps = validSteps.Count(s => s.CompleteOn.HasValue);
+        return (double)completedSteps / validSteps.Count * 100;
     }
     
     private async Task StartStep()
@@ -599,7 +606,7 @@
         if (step == _selectedStep)
         {
             var nextStep = _execution.Steps
-                .Where(s => !s.CompleteOn.HasValue && s.Id != step.Id)
+                .Where(s => s != null && !s.CompleteOn.HasValue && s.Id != step.Id)
                 .OrderBy(s => s.Id)
                 .FirstOrDefault();
                 
@@ -631,13 +638,13 @@
     private bool CanStartStep(ExecutionStep step)
     {
         // Find the index of the current step
-        var stepIndex = _execution.Steps.FindIndex(s => s.Id == step.Id);
+        var stepIndex = _execution.Steps.FindIndex(s => s != null && s.Id == step.Id);
         if (stepIndex <= 0) return true; // First step can always be started
         
         // Check if all previous steps are completed
         for (int i = 0; i < stepIndex; i++)
         {
-            if (!_execution.Steps[i].CompleteOn.HasValue)
+            if (_execution.Steps[i] != null && !_execution.Steps[i].CompleteOn.HasValue)
                 return false;
         }
         
@@ -658,7 +665,7 @@
         if (step.CompleteOn.HasValue) return false; // Already completed
         
         var firstIncompleteStep = _execution.Steps
-            .Where(s => !s.CompleteOn.HasValue && CanStartStep(s))
+            .Where(s => s != null && !s.CompleteOn.HasValue && CanStartStep(s))
             .OrderBy(s => s.Id)
             .FirstOrDefault();
             
@@ -705,7 +712,7 @@
         if (_completionStep == _selectedStep)
         {
             var nextStep = _execution.Steps
-                .Where(s => !s.CompleteOn.HasValue && s.Id != _completionStep.Id)
+                .Where(s => s != null && !s.CompleteOn.HasValue && s.Id != _completionStep.Id)
                 .OrderBy(s => s.Id)
                 .FirstOrDefault();
                 
