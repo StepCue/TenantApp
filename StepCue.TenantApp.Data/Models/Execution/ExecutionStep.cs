@@ -14,7 +14,7 @@ namespace StepCue.TenantApp.Data.Models.Execution
         public DateTime? StartedOn { get; set; }
         public DateTime? CompleteOn { get; set; }
         public string ResultSummary { get; set; } = string.Empty;
-        public byte[] ResultScreenshot { get; set; }
+        public byte[]? ResultScreenshot { get; set; }
         public List<ExecutionStepMessage> Messages { get; set; } = new();
     }
 }
