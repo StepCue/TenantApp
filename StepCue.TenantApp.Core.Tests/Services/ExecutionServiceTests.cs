@@ -200,10 +200,10 @@ namespace StepCue.TenantApp.Core.Tests.Services
         }
 
         [Fact]
-        public async Task CreateExecutionFromPlanAsync_AssignedMembers_BugDemonstration()
+        public async Task CreateExecutionFromPlanAsync_AssignedMembers_ShouldBeCopied()
         {
-            // This test demonstrates that AssignedMembers from PlanStep 
-            // are NOT copied to ExecutionStep during execution creation
+            // This test verifies that AssignedMembers from PlanStep 
+            // are copied to ExecutionStep during execution creation
             
             // Arrange
             var member1 = new PlanMember { Name = "Member 1", EmailAddress = "member1@test.com" };
@@ -233,15 +233,17 @@ namespace StepCue.TenantApp.Core.Tests.Services
             Assert.NotNull(result);
             Assert.Single(result.Steps);
             
-            // BUG: AssignedMembers are NOT copied from PlanStep to ExecutionStep
+            // FIXED: AssignedMembers should now be copied from PlanStep to ExecutionStep
             var executionStep = result.Steps.First();
-            Assert.Empty(executionStep.AssignedMembers);
+            Assert.Equal(2, executionStep.AssignedMembers.Count);
+            Assert.Contains(executionStep.AssignedMembers, m => m.Name == "Member 1" && m.EmailAddress == "member1@test.com");
+            Assert.Contains(executionStep.AssignedMembers, m => m.Name == "Member 2" && m.EmailAddress == "member2@test.com");
         }
 
         [Fact]
-        public async Task GetExecutionsQueryable_Members_BugDemonstration()
+        public async Task GetExecutionsQueryable_Members_ShouldBeIncluded()
         {
-            // This test demonstrates that Execution.Members are not included 
+            // This test verifies that Execution.Members are included 
             // in the GetExecutionsQueryable method
 
             // Arrange
@@ -275,9 +277,10 @@ namespace StepCue.TenantApp.Core.Tests.Services
             Assert.Single(results);
             var result = results.First();
 
-            // BUG: Execution.Members are not included in GetExecutionsQueryable
-            // So when we load fresh, the Members collection will be empty
-            Assert.Empty(result.Members);
+            // FIXED: Execution.Members should now be included in GetExecutionsQueryable
+            Assert.Equal(2, result.Members.Count);
+            Assert.Contains(result.Members, m => m.Name == "Member 1" && m.EmailAddress == "member1@test.com");
+            Assert.Contains(result.Members, m => m.Name == "Member 2" && m.EmailAddress == "member2@test.com");
         }
     }
 }

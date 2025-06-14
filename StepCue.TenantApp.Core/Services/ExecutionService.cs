@@ -18,6 +18,7 @@ namespace StepCue.TenantApp.Core.Services
         {
             return _context.Executions
                 .Include(e => e.Plan)
+                .Include(e => e.Members)
                 .Include(e => e.Steps).ThenInclude(i => i.AssignedMembers);
 
         }
@@ -34,7 +35,7 @@ namespace StepCue.TenantApp.Core.Services
         public async Task<Execution> CreateExecutionFromPlanAsync(int planId)
         {
             var plan = await _context.Plans
-                .Include(p => p.Steps)
+                .Include(p => p.Steps).ThenInclude(s => s.AssignedMembers)
                 .Include(p => p.Members)
                 .FirstOrDefaultAsync(p => p.Id == planId);
 
@@ -62,12 +63,20 @@ namespace StepCue.TenantApp.Core.Services
             // Copy steps
             foreach (var step in plan.Steps)
             {
-                execution.Steps.Add(new ExecutionStep
+                var executionStep = new ExecutionStep
                 {
                     Name = step.Name,
                     Summary = step.Summary,
                     Screenshot = step.Screenshot
-                });
+                };
+
+                // Copy assigned members from plan step to execution step
+                foreach (var assignedMember in step.AssignedMembers)
+                {
+                    executionStep.AssignedMembers.Add(assignedMember);
+                }
+
+                execution.Steps.Add(executionStep);
             }
 
             _context.Executions.Add(execution);
