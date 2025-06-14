@@ -1,6 +1,18 @@
 # StepCue TenantApp
 
-A Blazor Server application for managing plans and executions.
+A comprehensive Blazor Server application for managing step-by-step plans and tracking their execution progress.
+
+## Overview
+
+StepCue TenantApp is a collaborative planning and execution management system that allows teams to:
+
+- **Create Plans**: Design multi-step workflows with detailed instructions, summaries, and optional screenshots
+- **Manage Team Members**: Assign team members to plans with email addresses for coordination
+- **Execute Plans**: Transform plans into trackable executions where progress can be monitored
+- **Track Progress**: Monitor the completion status of each step during execution
+- **Collaborate**: Team members can add messages and updates to execution steps
+
+The application is built with modern web technologies and provides a responsive, user-friendly interface for managing complex workflows and ensuring nothing falls through the cracks.
 
 ## Technologies Used
 
@@ -11,14 +23,21 @@ A Blazor Server application for managing plans and executions.
 
 ## Running the Application
 
-### Using Docker
+### Using Docker (Recommended)
 
-#### Build and run with docker-compose (recommended)
+The easiest way to run StepCue TenantApp is using Docker, which provides a consistent environment with all dependencies included.
+
+#### Quick Start with Docker Compose
 ```bash
-docker-compose up --build
+# Clone the repository (if not already done)
+git clone https://github.com/StepCue/TenantApp.git
+cd TenantApp
+
+# Build and start the application
+docker compose up --build
 ```
 
-#### Build and run manually
+#### Manual Docker Setup
 ```bash
 # Build the Docker image
 docker build -t thestamp/stepcue:latest .
@@ -27,9 +46,21 @@ docker build -t thestamp/stepcue:latest .
 docker run -p 8080:8080 thestamp/stepcue:latest
 ```
 
-The application will be available at `http://localhost:8080`
+#### Accessing the Application
+Once running, the application will be available at:
+- **URL**: `http://localhost:8080`
+- **Features**: Create plans, manage team members, execute workflows, and track progress
+- **Data**: Uses an in-memory database, so data will reset when the container stops
 
-### Using .NET CLI
+#### Docker Environment Details
+- **Port**: 8080 (mapped from container to host)
+- **Environment**: Development mode with detailed error pages
+- **Database**: In-memory Entity Framework Core database
+- **Security**: Runs as non-root user inside container
+
+### Using .NET CLI (For Development)
+
+If you want to run the application locally for development:
 
 ```bash
 # Restore packages
@@ -38,6 +69,8 @@ dotnet restore
 # Run the application
 dotnet run --project StepCue.TenantApp.Web
 ```
+
+**Note**: Requires .NET 9.0 SDK or later installed on your system.
 
 ## Docker Hub
 
@@ -56,5 +89,19 @@ Images are tagged with:
 - Docker (for containerization)
 
 ### Project Structure
-- `StepCue.TenantApp.Web` - Main Blazor Server application
-- `StepCue.TenantApp.Data` - Data layer with Entity Framework models and context
+- `StepCue.TenantApp.Web` - Main Blazor Server application containing:
+  - Blazor components and pages for the user interface
+  - Services for business logic (PlanService, ExecutionService, FileService)
+  - Program.cs with application configuration
+- `StepCue.TenantApp.Data` - Data layer containing:
+  - Entity Framework Core models for Plans, Executions, Steps, and Members
+  - DataContext for database operations
+  - Support for in-memory database for development and testing
+
+### Key Features
+- **Plan Management**: Create, edit, and organize multi-step plans
+- **Team Collaboration**: Assign members to plans and executions
+- **Execution Tracking**: Convert plans to trackable executions
+- **Progress Monitoring**: Track completion status of individual steps
+- **File Attachments**: Support for screenshots and file uploads
+- **Responsive UI**: Built with MudBlazor for modern, accessible design
