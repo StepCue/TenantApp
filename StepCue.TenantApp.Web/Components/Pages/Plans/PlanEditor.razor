@@ -39,14 +39,24 @@
                                     <MudTextField @bind-Value="step.Summary" Label="Step Summary" Lines="3" Class="mb-2" />
                                     
                                     <MudText Typo="Typo.subtitle2" Class="mb-2">Assigned Members</MudText>
-                                    <MudSelect T="int" MultiSelection="true" SelectedValues="step.AssignedMemberIds" 
-                                               SelectedValuesChanged="(values) => step.AssignedMemberIds = values.ToList()"
-                                               Label="Select Members" Variant="Variant.Outlined" Class="mb-2">
-                                        @foreach (var member in _plan.Members)
-                                        {
-                                            <MudSelectItem T="int" Value="@member.Id">@member.Name</MudSelectItem>
-                                        }
-                                    </MudSelect>
+                                    @if (_plan.Members.Any())
+                                    {
+                                        <MudSelect T="string" MultiSelection="true" SelectedValues="GetAssignedMemberNames(step)" 
+                                                   SelectedValuesChanged="(values) => UpdateAssignedMemberNames(step, values)"
+                                                   Label="Select Members" Variant="Variant.Outlined" Class="mb-2">
+                                            @foreach (var member in _plan.Members)
+                                            {
+                                                var memberName = string.IsNullOrEmpty(member.Name) ? "Unnamed Member" : member.Name;
+                                                <MudSelectItem T="string" Value="@memberName">@memberName</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    }
+                                    else
+                                    {
+                                        <MudAlert Severity="Severity.Info" Class="mb-2">
+                                            Add members to the plan above to assign them to this step.
+                                        </MudAlert>
+                                    }
                                     
                                     <MudText Typo="Typo.subtitle2" Class="mb-2">Screenshot</MudText>
                                     <ScreenshotUploader @bind-ImageData="step.Screenshot" />
@@ -116,6 +126,16 @@
     private void AddStep()
     {
         _plan.Steps.Add(new PlanStep());
+    }
+
+    private IEnumerable<string> GetAssignedMemberNames(PlanStep step)
+    {
+        return step.AssignedMemberNames ?? new List<string>();
+    }
+
+    private void UpdateAssignedMemberNames(PlanStep step, IEnumerable<string> selectedNames)
+    {
+        step.AssignedMemberNames = selectedNames.ToList();
     }
 
     private async Task SavePlan()

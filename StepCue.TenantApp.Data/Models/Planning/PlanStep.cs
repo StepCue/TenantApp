@@ -13,5 +13,6 @@ namespace StepCue.TenantApp.Data.Models.Planning
         public string Summary { get; set; }
         public byte[]? Screenshot { get; set; }
         public List<int> AssignedMemberIds { get; set; } = new();
+        public List<string> AssignedMemberNames { get; set; } = new(); // Alternative for unsaved members
     }
 }
