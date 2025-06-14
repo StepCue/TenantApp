@@ -43,21 +43,66 @@ namespace StepCue.TenantApp.Web.Services
 
         public async Task<Plan> UpdatePlanAsync(Plan plan)
         {
-            _context.Entry(plan).State = EntityState.Modified;
-            foreach (var step in plan.Steps)
+            // Load the existing plan from database to get proper tracking
+            var existingPlan = await _context.Plans
+                .Include(p => p.Steps)
+                .Include(p => p.Members)
+                .FirstOrDefaultAsync(p => p.Id == plan.Id);
+
+            if (existingPlan == null)
             {
-                _context.Entry(step).State = step.Id == 0 
-                    ? EntityState.Added 
-                    : EntityState.Modified;
+                throw new InvalidOperationException($"Plan with ID {plan.Id} not found");
             }
-            foreach (var member in plan.Members)
+
+            // Update plan properties
+            existingPlan.Name = plan.Name;
+
+            // Handle steps - collect new ones and update existing ones
+            var newSteps = plan.Steps.Where(s => s.Id == 0).ToList();
+            var existingSteps = plan.Steps.Where(s => s.Id > 0).ToList();
+
+            // Add new steps
+            foreach (var step in newSteps)
             {
-                _context.Entry(member).State = member.Id == 0 
-                    ? EntityState.Added 
-                    : EntityState.Modified;
+                existingPlan.Steps.Add(step);
             }
+
+            // Update existing steps
+            foreach (var step in existingSteps)
+            {
+                var existingStep = existingPlan.Steps.FirstOrDefault(s => s.Id == step.Id);
+                if (existingStep != null)
+                {
+                    existingStep.Name = step.Name;
+                    existingStep.Summary = step.Summary;
+                    existingStep.Screenshot = step.Screenshot;
+                    existingStep.AssignedMembers = step.AssignedMembers;
+                }
+            }
+
+            // Handle members - collect new ones and update existing ones
+            var newMembers = plan.Members.Where(m => m.Id == 0).ToList();
+            var existingMembers = plan.Members.Where(m => m.Id > 0).ToList();
+
+            // Add new members
+            foreach (var member in newMembers)
+            {
+                existingPlan.Members.Add(member);
+            }
+
+            // Update existing members
+            foreach (var member in existingMembers)
+            {
+                var existingMember = existingPlan.Members.FirstOrDefault(m => m.Id == member.Id);
+                if (existingMember != null)
+                {
+                    existingMember.Name = member.Name;
+                    existingMember.EmailAddress = member.EmailAddress;
+                }
+            }
+
             await _context.SaveChangesAsync();
-            return plan;
+            return existingPlan;
         }
 
         public async Task DeletePlanAsync(int id)
