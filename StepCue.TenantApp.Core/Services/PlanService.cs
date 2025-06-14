@@ -70,6 +70,7 @@ namespace StepCue.TenantApp.Core.Services
                 if (existingStep != null)
                 {
                     existingStep.Name = step.Name;
+                    existingStep.Order = step.Order;
                     existingStep.Summary = step.Summary;
                     existingStep.Screenshot = step.Screenshot;
                     existingStep.AssignedMembers = step.AssignedMembers;

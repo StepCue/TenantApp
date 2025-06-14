@@ -1,0 +1,81 @@
+@using StepCue.TenantApp.Data.Models.Planning
+
+<MudContainer>
+    <MudPaper Class="pa-6" Elevation="1">
+        <MudText Typo="Typo.h5" Class="mb-4">
+            Edit Step Details
+        </MudText>
+        
+        <MudTextField @bind-Value="Step.Name" 
+                     Label="Step Name" 
+                     Required="true" 
+                     Class="mb-3" />
+        
+        <MudTextField @bind-Value="Step.Summary" 
+                     Label="Step Summary" 
+                     Lines="3" 
+                     Class="mb-3" />
+        
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Assigned Members</MudText>
+        @if (PlanMembers != null && PlanMembers.Any())
+        {
+            <MudSelect T="PlanMember" 
+                      MultiSelection="true" 
+                      SelectedValues="Step.AssignedMembers" 
+                      SelectedValuesChanged="OnAssignedMembersChanged"
+                      Label="Select Members" 
+                      Variant="Variant.Outlined" 
+                      Class="mb-3"
+                      ToStringFunc="@(m => string.IsNullOrEmpty(m?.Name) ? "Unnamed Member" : m.Name)">
+                @foreach (var member in PlanMembers)
+                {
+                    var memberName = string.IsNullOrEmpty(member.Name) ? "Unnamed Member" : member.Name;
+                    <MudSelectItem T="PlanMember" Value="@member">@memberName</MudSelectItem>
+                }
+            </MudSelect>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-3">
+                Add members to the plan to assign them to this step.
+            </MudAlert>
+        }
+        
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Screenshot</MudText>
+        <ScreenshotUploader @bind-ImageData="Step.Screenshot" />
+        
+        <div Class="d-flex gap-2 mt-4">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Save</MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="Cancel">Cancel</MudButton>
+        </div>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [Parameter] 
+    public PlanStep Step { get; set; } = new();
+
+    [Parameter] 
+    public List<PlanMember> PlanMembers { get; set; } = new();
+    
+    [Parameter]
+    public EventCallback OnSave { get; set; }
+    
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private void OnAssignedMembersChanged(IEnumerable<PlanMember> selectedMembers)
+    {
+        Step.AssignedMembers = selectedMembers.ToList();
+    }
+
+    private async Task Save()
+    {
+        await OnSave.InvokeAsync();
+    }
+    
+    private async Task Cancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+}
