@@ -54,12 +54,24 @@ export function isTypingInInput() {
 }
 
 function shouldHandleKeyEvent(event) {
-    // Don't handle if user is typing in an input field
-    if (isTypingInInput()) {
+    // Only handle specific keys
+    const handledKeys = ['Enter', 'Insert'];
+    if (!handledKeys.includes(event.key)) {
         return false;
     }
     
-    // Only handle specific keys
-    const handledKeys = ['Enter', 'Insert'];
-    return handledKeys.includes(event.key);
+    // Don't handle if user is typing in an input field, unless it's specific combinations
+    if (isTypingInInput()) {
+        // Allow Shift+Enter and Insert even when typing
+        if (event.key === 'Enter' && event.shiftKey) {
+            return true;
+        }
+        if (event.key === 'Insert') {
+            return true;
+        }
+        // Don't handle regular Enter when typing (let the input field handle it)
+        return false;
+    }
+    
+    return true;
 }

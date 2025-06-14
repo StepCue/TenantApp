@@ -161,7 +161,7 @@
                                                               Style="cursor: move;" 
                                                               @ondragstart="@((DragEventArgs e) => OnDragStart(e, context))"
                                                               @ondrop="@((DragEventArgs e) => OnDrop(e, context))"
-                                                              @ondragover="@OnDragOver"
+                                                              @ondragover:preventDefault="true"
                                                               @ondragenter="@OnDragEnter"
                                                               draggable="true" />
                                                 @(context.Order)
@@ -242,7 +242,7 @@
                                                               Style="cursor: move;" 
                                                               @ondragstart="@((DragEventArgs e) => OnDragStart(e, context))"
                                                               @ondrop="@((DragEventArgs e) => OnDrop(e, context))"
-                                                              @ondragover="@OnDragOver"
+                                                              @ondragover:preventDefault="true"
                                                               @ondragenter="@OnDragEnter"
                                                               draggable="true" />
                                                 @(context.Order)
@@ -255,7 +255,8 @@
                                             <MudTextField @bind-Value="@context.Name" 
                                                          Required="true" 
                                                          RequiredError="Step name is required"
-                                                         Variant="Variant.Text" />
+                                                         Variant="Variant.Text"
+                                                         @onkeydown="@((KeyboardEventArgs e) => HandleStepNameKeyDown(e, context))" />
                                         </MudTd>
                                     }
                                     @if (_showMembersColumn)
@@ -587,7 +588,40 @@
 
     private void ItemHasBeenCommitted(object element)
     {
-        // Nothing special needed here as the item is already updated
+        var step = (PlanStep)element;
+        
+        // Check if this was the last step and auto-create a new one if needed
+        if (IsLastStep(step))
+        {
+            AddStep();
+        }
+    }
+    
+    private bool IsLastStep(PlanStep step)
+    {
+        return _orderedSteps.Any() && _orderedSteps.LastOrDefault()?.Id == step.Id;
+    }
+    
+    private async Task HandleStepNameKeyDown(KeyboardEventArgs e, PlanStep step)
+    {
+        if (e.Key == "Enter")
+        {
+            // Commit the current edit
+            _table.SetEditingItem(null);
+            
+            // Check if this was the last step and auto-create a new one
+            if (IsLastStep(step))
+            {
+                AddStep();
+                await Task.Delay(100); // Small delay to ensure the new step is rendered
+                // Auto-edit the new step
+                var newStep = _orderedSteps.LastOrDefault();
+                if (newStep != null)
+                {
+                    _table.SetEditingItem(newStep);
+                }
+            }
+        }
     }
 
     // Drag and Drop functionality
@@ -597,14 +631,10 @@
         e.DataTransfer.EffectAllowed = "move";
     }
 
-    private void OnDragOver(DragEventArgs e)
-    {
-        e.DataTransfer.DropEffect = "move";
-    }
-
     private void OnDragEnter(DragEventArgs e)
     {
         e.DataTransfer.DropEffect = "move";
+        // Prevent default to allow drop
     }
 
     private void OnDrop(DragEventArgs e, PlanStep targetStep)
