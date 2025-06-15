@@ -203,7 +203,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
         public async Task CreateExecutionFromPlanAsync_AssignedMembers_BugDemonstration()
         {
             // This test demonstrates that AssignedMembers from PlanStep 
-            // are NOT copied to ExecutionStep during execution creation
+            // are copied to ExecutionStep during execution creation
             
             // Arrange
             var member1 = new PlanMember { Name = "Member 1", EmailAddress = "member1@test.com" };
@@ -233,9 +233,11 @@ namespace StepCue.TenantApp.Core.Tests.Services
             Assert.NotNull(result);
             Assert.Single(result.Steps);
             
-            // BUG: AssignedMembers are NOT copied from PlanStep to ExecutionStep
+            // FIXED: AssignedMembers are now copied from PlanStep to ExecutionStep
             var executionStep = result.Steps.First();
-            Assert.Empty(executionStep.AssignedMembers);
+            Assert.Equal(2, executionStep.AssignedMembers.Count);
+            Assert.Contains(executionStep.AssignedMembers, m => m.Name == "Member 1" && m.EmailAddress == "member1@test.com");
+            Assert.Contains(executionStep.AssignedMembers, m => m.Name == "Member 2" && m.EmailAddress == "member2@test.com");
         }
 
         [Fact]
@@ -279,6 +281,68 @@ namespace StepCue.TenantApp.Core.Tests.Services
             Assert.Equal(2, result.Members.Count);
             Assert.Contains(result.Members, m => m.Name == "Member 1" && m.EmailAddress == "member1@test.com");
             Assert.Contains(result.Members, m => m.Name == "Member 2" && m.EmailAddress == "member2@test.com");
+        }
+
+        [Fact]
+        public async Task CreateExecutionFromPlan_EndToEnd_AssignedMembers_ShouldBeAccessibleThroughGetExecution()
+        {
+            // This test verifies the full end-to-end flow:
+            // Create plan with assigned members -> Create execution -> Load execution -> Verify assigned members are there
+
+            // Arrange
+            var member1 = new PlanMember { Name = "Alice", EmailAddress = "alice@test.com" };
+            var member2 = new PlanMember { Name = "Bob", EmailAddress = "bob@test.com" };
+
+            var plan = new Plan
+            {
+                Name = "Integration Test Plan",
+                Members = new List<PlanMember> { member1, member2 },
+                Steps = new List<PlanStep>
+                {
+                    new PlanStep
+                    {
+                        Name = "Step 1",
+                        Summary = "First step with assigned members",
+                        AssignedMembers = new List<PlanMember> { member1 }
+                    },
+                    new PlanStep
+                    {
+                        Name = "Step 2", 
+                        Summary = "Second step with different members",
+                        AssignedMembers = new List<PlanMember> { member2 }
+                    }
+                }
+            };
+
+            Context.Plans.Add(plan);
+            await Context.SaveChangesAsync();
+
+            // Act - Create execution from plan
+            var createdExecution = await _executionService.CreateExecutionFromPlanAsync(plan.Id);
+            
+            // Clear context to force fresh load
+            Context.ChangeTracker.Clear();
+            
+            // Load execution using the service method that the UI would use
+            var loadedExecution = await _executionService.GetExecutionAsync(createdExecution.Id);
+
+            // Assert
+            Assert.NotNull(loadedExecution);
+            Assert.Equal(2, loadedExecution.Steps.Count);
+            
+            // Verify first step has Alice assigned
+            var step1 = loadedExecution.Steps.FirstOrDefault(s => s.Name == "Step 1");
+            Assert.NotNull(step1);
+            Assert.Single(step1.AssignedMembers);
+            Assert.Equal("Alice", step1.AssignedMembers.First().Name);
+            Assert.Equal("alice@test.com", step1.AssignedMembers.First().EmailAddress);
+            
+            // Verify second step has Bob assigned
+            var step2 = loadedExecution.Steps.FirstOrDefault(s => s.Name == "Step 2");
+            Assert.NotNull(step2);
+            Assert.Single(step2.AssignedMembers);
+            Assert.Equal("Bob", step2.AssignedMembers.First().Name);
+            Assert.Equal("bob@test.com", step2.AssignedMembers.First().EmailAddress);
         }
     }
 }
