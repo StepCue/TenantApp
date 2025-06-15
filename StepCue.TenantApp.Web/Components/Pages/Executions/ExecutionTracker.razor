@@ -492,21 +492,25 @@
                         This is a go/nogo step that requires approval from all assigned team members before it can be considered complete.
                     </MudText>
                     
-                    <MudTextField @bind-Value="_approvalComments"
-                                Label="Approval Comments" 
-                                Lines="3" 
-                                Class="mb-3"
-                                HelperText="Optional: Add any comments about your approval decision"
-                                @onblur="OnApprovalCommentsBlur" />
+                    @if (_currentApproval != null)
+                    {
+                        <MudTextField @bind-Value="_currentApproval.Comments"
+                                    Label="Approval Comments" 
+                                    Lines="3" 
+                                    Class="mb-3"
+                                    Required="true"
+                                    HelperText="Please provide comments for your approval decision" />
+                    }
                                 
                     @if (_approvalStep.AssignedMembers != null && _approvalStep.AssignedMembers.Any())
                     {
                         <MudText Typo="Typo.subtitle2" Class="mb-2">Select your role for this approval:</MudText>
-                        <MudSelect T="PlanMember" @bind-Value="_selectedApprover" 
+                        <MudSelect T="PlanMember" Value="_selectedApprover" 
                                    Label="Approving as" 
                                    Variant="Variant.Outlined" 
                                    Required="true"
-                                   ToStringFunc="@(m => string.IsNullOrEmpty(m?.Name) ? "Unnamed Member" : m.Name)">
+                                   ToStringFunc="@(m => string.IsNullOrEmpty(m?.Name) ? "Unnamed Member" : m.Name)"
+                                   ValueChanged="OnApproverChanged">
                             @foreach (var member in _approvalStep.AssignedMembers)
                             {
                                 var memberName = string.IsNullOrEmpty(member.Name) ? "Unnamed Member" : member.Name;
@@ -523,7 +527,7 @@
         <MudButton Variant="Variant.Filled" 
                  Color="Color.Warning" 
                  OnClick="SubmitStepApproval"
-                 Disabled="@(_selectedApprover == null)">
+                 Disabled="@(_selectedApprover == null || string.IsNullOrWhiteSpace(_currentApproval?.Comments))">
             Approve
         </MudButton>
     </DialogActions>
@@ -552,12 +556,12 @@
     
     // Approval dialog fields
     private bool _approvalDialogVisible = false;
-    private ExecutionStep _approvalStep;
-    private string _approvalComments = string.Empty;
-    private PlanMember _selectedApprover;
+    private ExecutionStep? _approvalStep;
+    private PlanMember? _selectedApprover;
+    private ExecutionStepApproval? _currentApproval;
     
     [Inject] 
-    private FileService _fileService { get; set; }
+    private FileService? _fileService { get; set; }
     
     protected override async Task OnInitializedAsync()
     {
@@ -797,60 +801,74 @@
     private void OpenStepApprovalDialog(ExecutionStep step)
     {
         _approvalStep = step;
-        _approvalComments = string.Empty;
         _selectedApprover = null;
+        _currentApproval = null;
         _approvalDialogVisible = true;
+    }
+    
+    private void OnApproverChanged(PlanMember selectedApprover)
+    {
+        _selectedApprover = selectedApprover;
+        
+        if (selectedApprover != null)
+        {
+            // Find the corresponding ExecutionMember based on name and email
+            var executionMember = _execution.Members.FirstOrDefault(em => 
+                em.Name == selectedApprover.Name && em.EmailAddress == selectedApprover.EmailAddress);
+                
+            if (executionMember != null)
+            {
+                // Find or create the approval record for this member
+                _currentApproval = _approvalStep.Approvals.FirstOrDefault(a => a.ExecutionMemberId == executionMember.Id);
+                
+                if (_currentApproval == null)
+                {
+                    // Create a new approval record (shouldn't happen in normal flow, but good to handle)
+                    _currentApproval = new ExecutionStepApproval
+                    {
+                        ExecutionStepId = _approvalStep.Id,
+                        ExecutionStep = _approvalStep,
+                        ExecutionMemberId = executionMember.Id,
+                        ExecutionMember = executionMember,
+                        IsApproved = false,
+                        Comments = string.Empty
+                    };
+                }
+            }
+        }
+        else
+        {
+            _currentApproval = null;
+        }
     }
     
     private void CloseApprovalDialog()
     {
         _approvalDialogVisible = false;
         _approvalStep = null;
-        _approvalComments = string.Empty;
         _selectedApprover = null;
+        _currentApproval = null;
     }
     
     private async Task SubmitStepApproval()
     {
-        if (_approvalStep == null || _selectedApprover == null)
+        if (_approvalStep == null || _selectedApprover == null || _currentApproval == null || string.IsNullOrWhiteSpace(_currentApproval.Comments))
             return;
             
-        // Find the corresponding ExecutionMember based on name and email
-        var executionMember = _execution.Members.FirstOrDefault(em => 
-            em.Name == _selectedApprover.Name && em.EmailAddress == _selectedApprover.EmailAddress);
-            
-        if (executionMember == null)
-        {
-            Snackbar.Add("Could not find corresponding team member for approval", Severity.Error);
-            return;
-        }
-            
-        // Find the existing approval record for this member
-        var approval = _approvalStep.Approvals.FirstOrDefault(a => a.ExecutionMemberId == executionMember.Id);
+        // Update approval
+        _currentApproval.IsApproved = true;
+        _currentApproval.ApprovalDate = DateTime.Now;
         
-        if (approval != null)
+        if (_currentApproval.Id == 0)
         {
-            // Update existing approval
-            approval.IsApproved = true;
-            approval.ApprovalDate = DateTime.Now;
-            approval.Comments = _approvalComments;
-            await ExecutionService.UpdateStepApprovalAsync(approval);
+            // New approval record - add it
+            await ExecutionService.AddApprovalToStepAsync(_currentApproval);
+            _approvalStep.Approvals.Add(_currentApproval);
         }
         else
         {
-            // Create new approval (this shouldn't happen in normal flow, but good to handle)
-            approval = new ExecutionStepApproval
-            {
-                ExecutionStepId = _approvalStep.Id,
-                ExecutionStep = _approvalStep,
-                ExecutionMemberId = executionMember.Id,
-                ExecutionMember = executionMember,
-                IsApproved = true,
-                ApprovalDate = DateTime.Now,
-                Comments = _approvalComments
-            };
-            await ExecutionService.AddApprovalToStepAsync(approval);
-            _approvalStep.Approvals.Add(approval);
+            // Existing approval record - update it
+            await ExecutionService.UpdateStepApprovalAsync(_currentApproval);
         }
         
         Snackbar.Add($"Step approved by {_selectedApprover.Name}", Severity.Success);
@@ -869,12 +887,5 @@
                 _selectedStep = nextStep;
             }
         }
-    }
-    
-    private void OnApprovalCommentsBlur()
-    {
-        // Force UI refresh when approval comments field loses focus
-        // This ensures the approve button state is updated properly
-        StateHasChanged();
     }
 }
