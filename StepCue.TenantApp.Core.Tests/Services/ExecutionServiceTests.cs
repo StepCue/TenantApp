@@ -200,10 +200,10 @@ namespace StepCue.TenantApp.Core.Tests.Services
         }
 
         [Fact]
-        public async Task CreateExecutionFromPlanAsync_AssignedMembers_BugDemonstration()
+        public async Task CreateExecutionFromPlanAsync_AssignedMembers_ShouldCopyFromPlanStep()
         {
-            // This test demonstrates that AssignedMembers from PlanStep 
-            // are NOT copied to ExecutionStep during execution creation
+            // This test verifies that AssignedMembers from PlanStep 
+            // are correctly copied to ExecutionStep during execution creation
             
             // Arrange
             var member1 = new PlanMember { Name = "Member 1", EmailAddress = "member1@test.com" };
@@ -233,9 +233,11 @@ namespace StepCue.TenantApp.Core.Tests.Services
             Assert.NotNull(result);
             Assert.Single(result.Steps);
             
-            // BUG: AssignedMembers are NOT copied from PlanStep to ExecutionStep
+            // Verify AssignedMembers are copied from PlanStep to ExecutionStep
             var executionStep = result.Steps.First();
-            Assert.Empty(executionStep.AssignedMembers);
+            Assert.Equal(2, executionStep.AssignedMembers.Count);
+            Assert.Contains(executionStep.AssignedMembers, am => am.Name == "Member 1" && am.EmailAddress == "member1@test.com");
+            Assert.Contains(executionStep.AssignedMembers, am => am.Name == "Member 2" && am.EmailAddress == "member2@test.com");
         }
 
         [Fact]

@@ -35,6 +35,7 @@ namespace StepCue.TenantApp.Core.Services
         {
             var plan = await _context.Plans
                 .Include(p => p.Steps)
+                .ThenInclude(s => s.AssignedMembers)
                 .Include(p => p.Members)
                 .FirstOrDefaultAsync(p => p.Id == planId);
 
@@ -62,13 +63,25 @@ namespace StepCue.TenantApp.Core.Services
             // Copy steps in order
             foreach (var step in plan.Steps.OrderBy(s => s.Order))
             {
-                execution.Steps.Add(new ExecutionStep
+                var executionStep = new ExecutionStep
                 {
                     Name = step.Name,
                     Summary = step.Summary,
                     Screenshot = step.Screenshot,
                     Order = step.Order
-                });
+                };
+
+                // Copy assigned members as ExecutionMembers
+                foreach (var assignedMember in step.AssignedMembers)
+                {
+                    executionStep.AssignedMembers.Add(new ExecutionMember
+                    {
+                        Name = assignedMember.Name,
+                        EmailAddress = assignedMember.EmailAddress
+                    });
+                }
+
+                execution.Steps.Add(executionStep);
             }
 
             _context.Executions.Add(execution);
