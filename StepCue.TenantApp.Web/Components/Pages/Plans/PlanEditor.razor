@@ -94,6 +94,11 @@
                                                 Size="Size.Small" />
                                 </MudMenuItem>
                                 <MudMenuItem>
+                                    <MudCheckBox T="bool" @bind-Checked="_showStepTypeColumn" 
+                                                Label="Step Type" 
+                                                Size="Size.Small" />
+                                </MudMenuItem>
+                                <MudMenuItem>
                                     <MudCheckBox T="bool" @bind-Checked="_showMembersColumn" 
                                                 Label="Assigned Members" 
                                                 Size="Size.Small" />
@@ -113,6 +118,7 @@
                                 <ColGroup>
                                     <col style="width: 80px;" />
                                     <col />
+                                    <col style="width: 120px;" />
                                     <col style="width: 250px;" />
                                     <col style="width: 120px;" />
                                 </ColGroup>
@@ -124,6 +130,10 @@
                                     @if (_showNameColumn)
                                     {
                                         <MudTh>Name</MudTh>
+                                    }
+                                    @if (_showStepTypeColumn)
+                                    {
+                                        <MudTh>Type</MudTh>
                                     }
                                     @if (_showMembersColumn)
                                     {
@@ -167,6 +177,18 @@
                                                          Variant="Variant.Outlined"
                                                          Margin="Margin.Dense"
                                                          FullWidth="true" />
+                                        </MudTd>
+                                    }
+                                    @if (_showStepTypeColumn)
+                                    {
+                                        <MudTd DataLabel="Type" Class="@rowClass">
+                                            <MudSelect T="StepType" @bind-Value="@context.StepType"
+                                                      Label="Step Type"
+                                                      Variant="Variant.Outlined"
+                                                      Margin="Margin.Dense">
+                                                <MudSelectItem T="StepType" Value="@StepType.Execution">Execution</MudSelectItem>
+                                                <MudSelectItem T="StepType" Value="@StepType.GoNoGo">Go/NoGo</MudSelectItem>
+                                            </MudSelect>
                                         </MudTd>
                                     }
                                     @if (_showMembersColumn)
@@ -245,6 +267,7 @@
     // Column visibility settings
     private bool _showOrderColumn = true;
     private bool _showNameColumn = true;
+    private bool _showStepTypeColumn = true;
     private bool _showMembersColumn = true;
     private bool _showActionsColumn = true;
     

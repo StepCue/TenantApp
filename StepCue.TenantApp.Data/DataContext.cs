@@ -23,6 +23,7 @@ namespace StepCue.TenantApp.Data
         public DbSet<ExecutionStep> ExecutionSteps { get; set; }
         public DbSet<ExecutionMember> ExecutionMembers { get; set; }
         public DbSet<ExecutionStepMessage> ExecutionStepMessages { get; set; }
+        public DbSet<ExecutionStepApproval> ExecutionStepApprovals { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -48,6 +49,20 @@ namespace StepCue.TenantApp.Data
                 .WithOne(m => m.ExecutionStep)
                 .HasForeignKey(m => m.ExecutionStepId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure ExecutionStep -> Approvals relationship
+            modelBuilder.Entity<ExecutionStep>()
+                .HasMany(es => es.Approvals)
+                .WithOne(a => a.ExecutionStep)
+                .HasForeignKey(a => a.ExecutionStepId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure ExecutionStepApproval -> ExecutionMember relationship
+            modelBuilder.Entity<ExecutionStepApproval>()
+                .HasOne(a => a.ExecutionMember)
+                .WithMany()
+                .HasForeignKey(a => a.ExecutionMemberId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

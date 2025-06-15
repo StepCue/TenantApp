@@ -73,6 +73,7 @@ namespace StepCue.TenantApp.Core.Services
                     existingStep.Order = step.Order;
                     existingStep.Summary = step.Summary;
                     existingStep.Screenshot = step.Screenshot;
+                    existingStep.StepType = step.StepType;
                     existingStep.AssignedMembers = step.AssignedMembers;
                 }
             }
