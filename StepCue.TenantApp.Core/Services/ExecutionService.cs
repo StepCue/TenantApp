@@ -59,14 +59,15 @@ namespace StepCue.TenantApp.Core.Services
                 });
             }
 
-            // Copy steps
-            foreach (var step in plan.Steps)
+            // Copy steps in order
+            foreach (var step in plan.Steps.OrderBy(s => s.Order))
             {
                 execution.Steps.Add(new ExecutionStep
                 {
                     Name = step.Name,
                     Summary = step.Summary,
-                    Screenshot = step.Screenshot
+                    Screenshot = step.Screenshot,
+                    Order = step.Order
                 });
             }
 
