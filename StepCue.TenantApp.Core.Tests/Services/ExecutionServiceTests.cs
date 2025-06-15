@@ -280,5 +280,85 @@ namespace StepCue.TenantApp.Core.Tests.Services
             Assert.Contains(result.Members, m => m.Name == "Member 1" && m.EmailAddress == "member1@test.com");
             Assert.Contains(result.Members, m => m.Name == "Member 2" && m.EmailAddress == "member2@test.com");
         }
+
+        [Fact]
+        public async Task CreateExecutionFromPlanAsync_ShouldPreserveStepOrder()
+        {
+            // This test demonstrates that step order should be preserved when creating execution from plan
+            
+            // Arrange
+            var plan = new Plan
+            {
+                Name = "Test Plan",
+                Steps = new List<PlanStep>
+                {
+                    new PlanStep { Name = "Third Step", Summary = "Should be third", Order = 3 },
+                    new PlanStep { Name = "First Step", Summary = "Should be first", Order = 1 },
+                    new PlanStep { Name = "Second Step", Summary = "Should be second", Order = 2 }
+                }
+            };
+
+            Context.Plans.Add(plan);
+            await Context.SaveChangesAsync();
+
+            // Act
+            var result = await _executionService.CreateExecutionFromPlanAsync(plan.Id);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(3, result.Steps.Count);
+            
+            // Steps should be ordered by Order property, and Order should be copied
+            var orderedSteps = result.Steps.OrderBy(s => s.Order).ToList();
+            
+            Assert.Equal(1, orderedSteps[0].Order);
+            Assert.Equal("First Step", orderedSteps[0].Name);
+            
+            Assert.Equal(2, orderedSteps[1].Order);
+            Assert.Equal("Second Step", orderedSteps[1].Name);
+            
+            Assert.Equal(3, orderedSteps[2].Order);
+            Assert.Equal("Third Step", orderedSteps[2].Name);
+        }
+
+        [Fact]
+        public async Task CreateExecutionFromPlanAsync_ShouldHandleStepsWithZeroOrder()
+        {
+            // Test edge case where some steps have Order = 0
+            
+            // Arrange
+            var plan = new Plan
+            {
+                Name = "Test Plan",
+                Steps = new List<PlanStep>
+                {
+                    new PlanStep { Name = "Unordered Step", Summary = "Should be first", Order = 0 },
+                    new PlanStep { Name = "Second Step", Summary = "Should be second", Order = 2 },
+                    new PlanStep { Name = "First Step", Summary = "Should be after unordered", Order = 1 }
+                }
+            };
+
+            Context.Plans.Add(plan);
+            await Context.SaveChangesAsync();
+
+            // Act
+            var result = await _executionService.CreateExecutionFromPlanAsync(plan.Id);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(3, result.Steps.Count);
+            
+            // Steps should be in order: Order 0, Order 1, Order 2
+            var steps = result.Steps.ToList();
+            
+            Assert.Equal(0, steps[0].Order);
+            Assert.Equal("Unordered Step", steps[0].Name);
+            
+            Assert.Equal(1, steps[1].Order);
+            Assert.Equal("First Step", steps[1].Name);
+            
+            Assert.Equal(2, steps[2].Order);
+            Assert.Equal("Second Step", steps[2].Name);
+        }
     }
 }
