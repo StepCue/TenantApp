@@ -600,7 +600,7 @@
         {
             var nextStep = _execution.Steps
                 .Where(s => !s.CompleteOn.HasValue && s.Id != step.Id)
-                .OrderBy(s => s.Id)
+                .OrderBy(s => s.Order)
                 .FirstOrDefault();
                 
             if (nextStep != null)
@@ -630,18 +630,16 @@
     
     private bool CanStartStep(ExecutionStep step)
     {
-        // Find the index of the current step
-        var stepIndex = _execution.Steps.FindIndex(s => s.Id == step.Id);
-        if (stepIndex <= 0) return true; // First step can always be started
+        // Check if all steps with lower order numbers are completed
+        var stepsBeforeThisOne = _execution.Steps
+            .Where(s => s.Order < step.Order)
+            .ToList();
+            
+        // If there are no steps before this one, it can always be started
+        if (!stepsBeforeThisOne.Any()) return true;
         
         // Check if all previous steps are completed
-        for (int i = 0; i < stepIndex; i++)
-        {
-            if (!_execution.Steps[i].CompleteOn.HasValue)
-                return false;
-        }
-        
-        return true;
+        return stepsBeforeThisOne.All(s => s.CompleteOn.HasValue);
     }
     
     private bool IsStepHighlighted(ExecutionStep step)
@@ -659,7 +657,7 @@
         
         var firstIncompleteStep = _execution.Steps
             .Where(s => !s.CompleteOn.HasValue && CanStartStep(s))
-            .OrderBy(s => s.Id)
+            .OrderBy(s => s.Order)
             .FirstOrDefault();
             
         return firstIncompleteStep?.Id == step.Id;
@@ -698,15 +696,16 @@
         
         await ExecutionService.UpdateExecutionStepAsync(_completionStep);
         Snackbar.Add("Step completed successfully", Severity.Success);
-        
+
+        var id = _completionStep.Id;
         CloseCompletionDialog();
         
         // Select next incomplete step if available and we're working with the main selected step
         if (_completionStep == _selectedStep)
         {
             var nextStep = _execution.Steps
-                .Where(s => !s.CompleteOn.HasValue && s.Id != _completionStep.Id)
-                .OrderBy(s => s.Id)
+                .Where(s => !s.CompleteOn.HasValue && s.Id != id)
+                .OrderBy(s => s.Order)
                 .FirstOrDefault();
                 
             if (nextStep != null)

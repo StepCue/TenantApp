@@ -17,7 +17,7 @@
                 {
                     <MudPaper Elevation="0" Class="@($"pa-2 mb-2 {GetMessageClass(message)}")">
                         <MudText Typo="Typo.subtitle2">@message.Author?.Name</MudText>
-                        <MudText Typo="Typo.body2">@message.Message</MudText>
+                        <MudText Typo="Typo.body2">@message.Content</MudText>
                         <MudText Typo="Typo.caption" Class="d-flex justify-end">
                             @message.CreatedOn.ToString("g")
                         </MudText>
@@ -100,7 +100,7 @@
             ExecutionStep = Step,
             Author = author,
             AuthorId = author.Id,
-            Message = _newMessage,
+            Content = _newMessage,
             CreatedOn = DateTime.Now
         };
         
