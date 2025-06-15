@@ -18,8 +18,8 @@ namespace StepCue.TenantApp.Core.Services
         {
             return _context.Executions
                 .Include(e => e.Plan)
-                .Include(e => e.Steps).ThenInclude(i => i.AssignedMembers);
-
+                .Include(e => e.Members)
+                .Include(e => e.Steps).ThenInclude(s => s.AssignedMembers);
         }
 
         public async Task<Execution> GetExecutionAsync(int id)
