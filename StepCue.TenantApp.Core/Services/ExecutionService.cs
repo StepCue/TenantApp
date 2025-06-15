@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using StepCue.TenantApp.Data;
 using StepCue.TenantApp.Data.Models.Execution;
+using StepCue.TenantApp.Data.Models.Planning;
 
 namespace StepCue.TenantApp.Core.Services
 {
@@ -19,7 +20,8 @@ namespace StepCue.TenantApp.Core.Services
             return _context.Executions
                 .Include(e => e.Plan)
                 .Include(e => e.Members)
-                .Include(e => e.Steps).ThenInclude(s => s.AssignedMembers);
+                .Include(e => e.Steps).ThenInclude(s => s.AssignedMembers)
+                .Include(e => e.Steps).ThenInclude(s => s.Approvals).ThenInclude(a => a.ExecutionMember);
         }
 
         public async Task<Execution> GetExecutionAsync(int id)
@@ -68,7 +70,8 @@ namespace StepCue.TenantApp.Core.Services
                     Name = step.Name,
                     Summary = step.Summary,
                     Screenshot = step.Screenshot,
-                    Order = step.Order
+                    Order = step.Order,
+                    StepType = step.StepType
                 };
 
                 // Copy assigned members as ExecutionMembers
@@ -86,6 +89,23 @@ namespace StepCue.TenantApp.Core.Services
 
             _context.Executions.Add(execution);
             await _context.SaveChangesAsync();
+
+            // After saving, create approval records for go/nogo steps
+            foreach (var step in execution.Steps.Where(s => s.StepType == StepType.GoNoGo))
+            {
+                foreach (var member in step.AssignedMembers)
+                {
+                    var approval = new ExecutionStepApproval
+                    {
+                        ExecutionStepId = step.Id,
+                        ExecutionMemberId = member.Id,
+                        IsApproved = false
+                    };
+                    _context.ExecutionStepApprovals.Add(approval);
+                }
+            }
+
+            await _context.SaveChangesAsync();
             return execution;
         }
 
@@ -101,6 +121,43 @@ namespace StepCue.TenantApp.Core.Services
             _context.ExecutionStepMessages.Add(message);
             await _context.SaveChangesAsync();
             return message;
+        }
+
+        public async Task<ExecutionStepApproval> AddApprovalToStepAsync(ExecutionStepApproval approval)
+        {
+            _context.ExecutionStepApprovals.Add(approval);
+            await _context.SaveChangesAsync();
+            return approval;
+        }
+
+        public async Task<ExecutionStepApproval> UpdateStepApprovalAsync(ExecutionStepApproval approval)
+        {
+            _context.Entry(approval).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+            return approval;
+        }
+
+        public bool IsStepComplete(ExecutionStep step)
+        {
+            // For regular execution steps, check if CompleteOn is set
+            if (step.StepType == Data.Models.Planning.StepType.Execution)
+            {
+                return step.CompleteOn.HasValue;
+            }
+
+            // For go/nogo steps, check if all assigned members have approved
+            if (step.StepType == Data.Models.Planning.StepType.GoNoGo)
+            {
+                if (!step.AssignedMembers.Any())
+                    return false; // Can't complete a go/nogo step with no assigned members
+
+                // All assigned members must have an approval record that is approved
+                return step.AssignedMembers.All(member =>
+                    step.Approvals.Any(approval =>
+                        approval.ExecutionMemberId == member.Id && approval.IsApproved));
+            }
+
+            return false;
         }
     }
 }
