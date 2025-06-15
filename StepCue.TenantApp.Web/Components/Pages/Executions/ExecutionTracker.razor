@@ -2,6 +2,7 @@
 @page "/executions/create/{PlanId:int}"
 @using StepCue.TenantApp.Core.Services
 @using StepCue.TenantApp.Data.Models.Execution
+@using StepCue.TenantApp.Data.Models.Planning
 @using StepCue.TenantApp.Web.Services
 @inject ExecutionService ExecutionService
 @inject NavigationManager NavigationManager
@@ -245,13 +246,26 @@
                                                 }
                                                 else
                                                 {
-                                                    <MudButton Variant="Variant.Filled" 
-                                                             Color="Color.Success" 
-                                                             Size="Size.Small"
-                                                             OnClick="@(() => OpenStepCompletionDialog(step))"
-                                                             onclick:stopPropagation="true">
-                                                        Complete
-                                                    </MudButton>
+                                                    @if (step.StepType == StepCue.TenantApp.Data.Models.Planning.StepType.GoNoGo)
+                                                    {
+                                                        <MudButton Variant="Variant.Filled" 
+                                                                 Color="Color.Warning" 
+                                                                 Size="Size.Small"
+                                                                 OnClick="@(() => OpenStepApprovalDialog(step))"
+                                                                 onclick:stopPropagation="true">
+                                                            Approve
+                                                        </MudButton>
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudButton Variant="Variant.Filled" 
+                                                                 Color="Color.Success" 
+                                                                 Size="Size.Small"
+                                                                 OnClick="@(() => OpenStepCompletionDialog(step))"
+                                                                 onclick:stopPropagation="true">
+                                                            Complete
+                                                        </MudButton>
+                                                    }
                                                 }
                                             }
                                             <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">Click for details</MudText>
@@ -464,6 +478,56 @@
     </DialogActions>
 </MudDialog>
 
+<!-- Step Approval Dialog -->
+<MudDialog @bind-Visible="_approvalDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Medium, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h5">Approve Step: @_approvalStep?.Name</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_approvalStep != null)
+        {
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        This is a go/nogo step that requires approval from all assigned team members before it can be considered complete.
+                    </MudText>
+                    
+                    <MudTextField @bind-Value="_approvalComments"
+                                Label="Approval Comments" 
+                                Lines="3" 
+                                Class="mb-3"
+                                HelperText="Optional: Add any comments about your approval decision" />
+                                
+                    @if (_approvalStep.AssignedMembers != null && _approvalStep.AssignedMembers.Any())
+                    {
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Select your role for this approval:</MudText>
+                        <MudSelect T="PlanMember" @bind-Value="_selectedApprover" 
+                                   Label="Approving as" 
+                                   Variant="Variant.Outlined" 
+                                   Required="true"
+                                   ToStringFunc="@(m => string.IsNullOrEmpty(m?.Name) ? "Unnamed Member" : m.Name)">
+                            @foreach (var member in _approvalStep.AssignedMembers)
+                            {
+                                var memberName = string.IsNullOrEmpty(member.Name) ? "Unnamed Member" : member.Name;
+                                <MudSelectItem T="PlanMember" Value="@member">@memberName</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                </MudItem>
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseApprovalDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" 
+                 Color="Color.Warning" 
+                 OnClick="SubmitStepApproval"
+                 Disabled="@(_selectedApprover == null)">
+            Approve
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
 @code {
     [Parameter]
     public int? Id { get; set; }
@@ -484,6 +548,12 @@
     private string _completionWentWell = string.Empty;
     private string _completionCouldBeBetter = string.Empty;
     private byte[]? _completionScreenshot;
+    
+    // Approval dialog fields
+    private bool _approvalDialogVisible = false;
+    private ExecutionStep _approvalStep;
+    private string _approvalComments = string.Empty;
+    private PlanMember _selectedApprover;
     
     [Inject] 
     private FileService _fileService { get; set; }
@@ -713,6 +783,83 @@
         {
             var nextStep = _execution.Steps
                 .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != id)
+                .OrderBy(s => s.Order)
+                .FirstOrDefault();
+                
+            if (nextStep != null)
+            {
+                _selectedStep = nextStep;
+            }
+        }
+    }
+    
+    private void OpenStepApprovalDialog(ExecutionStep step)
+    {
+        _approvalStep = step;
+        _approvalComments = string.Empty;
+        _selectedApprover = null;
+        _approvalDialogVisible = true;
+    }
+    
+    private void CloseApprovalDialog()
+    {
+        _approvalDialogVisible = false;
+        _approvalStep = null;
+        _approvalComments = string.Empty;
+        _selectedApprover = null;
+    }
+    
+    private async Task SubmitStepApproval()
+    {
+        if (_approvalStep == null || _selectedApprover == null)
+            return;
+            
+        // Find the corresponding ExecutionMember based on name and email
+        var executionMember = _execution.Members.FirstOrDefault(em => 
+            em.Name == _selectedApprover.Name && em.EmailAddress == _selectedApprover.EmailAddress);
+            
+        if (executionMember == null)
+        {
+            Snackbar.Add("Could not find corresponding team member for approval", Severity.Error);
+            return;
+        }
+            
+        // Find the existing approval record for this member
+        var approval = _approvalStep.Approvals.FirstOrDefault(a => a.ExecutionMemberId == executionMember.Id);
+        
+        if (approval != null)
+        {
+            // Update existing approval
+            approval.IsApproved = true;
+            approval.ApprovalDate = DateTime.Now;
+            approval.Comments = _approvalComments;
+            await ExecutionService.UpdateStepApprovalAsync(approval);
+        }
+        else
+        {
+            // Create new approval (this shouldn't happen in normal flow, but good to handle)
+            approval = new ExecutionStepApproval
+            {
+                ExecutionStepId = _approvalStep.Id,
+                ExecutionStep = _approvalStep,
+                ExecutionMemberId = executionMember.Id,
+                ExecutionMember = executionMember,
+                IsApproved = true,
+                ApprovalDate = DateTime.Now,
+                Comments = _approvalComments
+            };
+            await ExecutionService.AddApprovalToStepAsync(approval);
+            _approvalStep.Approvals.Add(approval);
+        }
+        
+        Snackbar.Add($"Step approved by {_selectedApprover.Name}", Severity.Success);
+        CloseApprovalDialog();
+        
+        // Check if step is now complete and select next step if needed
+        if (ExecutionService.IsStepComplete(_approvalStep) && _approvalStep == _selectedStep)
+        {
+            var nextStep = _execution.Steps
+                .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != _approvalStep.Id)
                 .OrderBy(s => s.Order)
                 .FirstOrDefault();
                 
