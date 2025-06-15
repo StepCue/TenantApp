@@ -100,7 +100,7 @@
             <MudCardContent>
                 <MudText Typo="Typo.h6" Class="mb-3">Overall Progress</MudText>
                 <MudProgressLinear Color="Color.Primary" Value="@GetExecutionProgress()" Class="mb-2" />
-                <MudText Typo="Typo.caption">@(_execution.Steps.Count(s => s.CompleteOn.HasValue)) of @_execution.Steps.Count steps completed</MudText>
+                <MudText Typo="Typo.caption">@(_execution.Steps.Count(s => ExecutionService.IsStepComplete(s))) of @_execution.Steps.Count steps completed</MudText>
                 
                 <!-- Horizontal step indicators -->
                 <div class="d-flex justify-center mt-3" style="gap: 8px;">
@@ -108,7 +108,7 @@
                     {
                         var step = _execution.Steps[i];
                         var stepNumber = i + 1;
-                        var isCompleted = step.CompleteOn.HasValue;
+                        var isCompleted = ExecutionService.IsStepComplete(step);
                         var isStarted = step.StartedOn.HasValue;
                         var isCurrent = _selectedStep?.Id == step.Id;
                         
@@ -142,7 +142,7 @@
                     {
                         var step = _execution.Steps[i];
                         var isLast = i == _execution.Steps.Count - 1;
-                        var isCompleted = step.CompleteOn.HasValue;
+                        var isCompleted = ExecutionService.IsStepComplete(step);
                         var isStarted = step.StartedOn.HasValue;
                         var canStart = CanStartStep(step);
                         var isHighlighted = IsStepHighlighted(step);
@@ -170,19 +170,27 @@
                                    Style="cursor: pointer;">
                                 <MudCardContent>
                                     <div class="d-flex justify-space-between align-center mb-2">
-                                        <MudText Typo="Typo.h6">@step.Name</MudText>
-                                        @if (isStarted && !isCompleted)
-                                        {
-                                            <MudChip T="string" Color="Color.Info" Size="Size.Small">@GetTimeSinceStarted(step)</MudChip>
-                                        }
-                                        else if (isCompleted)
-                                        {
-                                            <MudChip T="string" Color="Color.Success" Size="Size.Small">Completed</MudChip>
-                                        }
-                                        else if (!canStart)
-                                        {
-                                            <MudChip T="string" Color="Color.Default" Size="Size.Small">Waiting</MudChip>
-                                        }
+                                        <div class="d-flex align-center" style="gap: 8px;">
+                                            <MudText Typo="Typo.h6">@step.Name</MudText>
+                                            @if (step.StepType == StepCue.TenantApp.Data.Models.Planning.StepType.GoNoGo)
+                                            {
+                                                <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="Variant.Outlined">Go/NoGo</MudChip>
+                                            }
+                                        </div>
+                                        <div>
+                                            @if (isStarted && !isCompleted)
+                                            {
+                                                <MudChip T="string" Color="Color.Info" Size="Size.Small">@GetTimeSinceStarted(step)</MudChip>
+                                            }
+                                            else if (isCompleted)
+                                            {
+                                                <MudChip T="string" Color="Color.Success" Size="Size.Small">Completed</MudChip>
+                                            }
+                                            else if (!canStart)
+                                            {
+                                                <MudChip T="string" Color="Color.Default" Size="Size.Small">Waiting</MudChip>
+                                            }
+                                        </div>
                                     </div>
                                     
                                     @if (!string.IsNullOrEmpty(step.Summary))
@@ -510,7 +518,7 @@
             if (_execution?.Steps.Count > 0)
             {
                 // Select first incomplete step, or the last step if all are complete
-                _selectedStep = _execution.Steps.FirstOrDefault(s => !s.CompleteOn.HasValue) ?? 
+                _selectedStep = _execution.Steps.FirstOrDefault(s => !ExecutionService.IsStepComplete(s)) ?? 
                                _execution.Steps.Last();
             }
         }
@@ -552,7 +560,7 @@
     {
         if (_execution?.Steps == null || !_execution.Steps.Any()) return 0;
         
-        var completedSteps = _execution.Steps.Count(s => s.CompleteOn.HasValue);
+        var completedSteps = _execution.Steps.Count(s => ExecutionService.IsStepComplete(s));
         return (double)completedSteps / _execution.Steps.Count * 100;
     }
     
@@ -599,7 +607,7 @@
         if (step == _selectedStep)
         {
             var nextStep = _execution.Steps
-                .Where(s => !s.CompleteOn.HasValue && s.Id != step.Id)
+                .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != step.Id)
                 .OrderBy(s => s.Order)
                 .FirstOrDefault();
                 
@@ -612,7 +620,7 @@
     
     private string GetStepIcon(ExecutionStep step)
     {
-        if (step.CompleteOn.HasValue)
+        if (ExecutionService.IsStepComplete(step))
             return Icons.Material.Filled.CheckCircle;
         if (step.StartedOn.HasValue)
             return Icons.Material.Filled.PlayCircle;
@@ -621,7 +629,7 @@
     
     private Color GetStepColor(ExecutionStep step)
     {
-        if (step.CompleteOn.HasValue)
+        if (ExecutionService.IsStepComplete(step))
             return Color.Success;
         if (step.StartedOn.HasValue)
             return Color.Info;
@@ -639,7 +647,7 @@
         if (!stepsBeforeThisOne.Any()) return true;
         
         // Check if all previous steps are completed
-        return stepsBeforeThisOne.All(s => s.CompleteOn.HasValue);
+        return stepsBeforeThisOne.All(s => ExecutionService.IsStepComplete(s));
     }
     
     private bool IsStepHighlighted(ExecutionStep step)
@@ -653,10 +661,10 @@
     private bool IsCurrentStep(ExecutionStep step)
     {
         // Current step is the first incomplete step that can be started
-        if (step.CompleteOn.HasValue) return false; // Already completed
+        if (ExecutionService.IsStepComplete(step)) return false; // Already completed
         
         var firstIncompleteStep = _execution.Steps
-            .Where(s => !s.CompleteOn.HasValue && CanStartStep(s))
+            .Where(s => !ExecutionService.IsStepComplete(s) && CanStartStep(s))
             .OrderBy(s => s.Order)
             .FirstOrDefault();
             
@@ -704,7 +712,7 @@
         if (_completionStep == _selectedStep)
         {
             var nextStep = _execution.Steps
-                .Where(s => !s.CompleteOn.HasValue && s.Id != id)
+                .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != id)
                 .OrderBy(s => s.Order)
                 .FirstOrDefault();
                 
