@@ -496,7 +496,8 @@
                                 Label="Approval Comments" 
                                 Lines="3" 
                                 Class="mb-3"
-                                HelperText="Optional: Add any comments about your approval decision" />
+                                HelperText="Optional: Add any comments about your approval decision"
+                                @onblur="OnApprovalCommentsBlur" />
                                 
                     @if (_approvalStep.AssignedMembers != null && _approvalStep.AssignedMembers.Any())
                     {
@@ -868,5 +869,12 @@
                 _selectedStep = nextStep;
             }
         }
+    }
+    
+    private void OnApprovalCommentsBlur()
+    {
+        // Force UI refresh when approval comments field loses focus
+        // This ensures the approve button state is updated properly
+        StateHasChanged();
     }
 }
