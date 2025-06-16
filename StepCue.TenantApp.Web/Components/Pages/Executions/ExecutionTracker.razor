@@ -177,9 +177,17 @@
                                             {
                                                 <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="Variant.Outlined">Go/NoGo</MudChip>
                                             }
+                                            else if (step.StepType == StepCue.TenantApp.Data.Models.Planning.StepType.Fallback)
+                                            {
+                                                <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Outlined">Fallback Approval</MudChip>
+                                            }
                                         </div>
                                         <div>
-                                            @if (isStarted && !isCompleted)
+                                            @if (step.IsCancelled)
+                                            {
+                                                <MudChip T="string" Color="Color.Dark" Size="Size.Small">Cancelled</MudChip>
+                                            }
+                                            else if (isStarted && !isCompleted)
                                             {
                                                 <MudChip T="string" Color="Color.Info" Size="Size.Small">@GetTimeSinceStarted(step)</MudChip>
                                             }
@@ -232,7 +240,8 @@
                                         </div>
                                         
                                         <div class="d-flex gap-2 align-center">
-                                            @if (!isCompleted && canStart)
+                                            <!-- Don't show action buttons for cancelled steps -->
+                                            @if (!step.IsCancelled && !isCompleted && canStart)
                                             {
                                                 @if (step.StepType == StepCue.TenantApp.Data.Models.Planning.StepType.GoNoGo)
                                                 {
@@ -242,6 +251,16 @@
                                                              OnClick="@(async () => await OpenStepApprovalDialog(step))"
                                                              onclick:stopPropagation="true">
                                                         Approve
+                                                    </MudButton>
+                                                }
+                                                else if (step.StepType == StepCue.TenantApp.Data.Models.Planning.StepType.Fallback)
+                                                {
+                                                    <MudButton Variant="Variant.Filled" 
+                                                             Color="Color.Error" 
+                                                             Size="Size.Small"
+                                                             OnClick="@(async () => await OpenStepApprovalDialog(step))"
+                                                             onclick:stopPropagation="true">
+                                                        Approve Fallback
                                                     </MudButton>
                                                 }
                                                 else if (!isStarted)
@@ -265,8 +284,30 @@
                                                     </MudButton>
                                                 }
                                             }
-                                            <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">Click for details</MudText>
+                                            
+                                            <!-- Fallback button - show for started execution steps that have fallback steps -->
+                                            @if (!step.IsCancelled && isStarted && !isCompleted && 
+                                                 step.StepType == StepCue.TenantApp.Data.Models.Planning.StepType.Execution && 
+                                                 step.FallbackSteps.Any())
+                                            {
+                                                <MudButton Variant="Variant.Outlined" 
+                                                         Color="Color.Warning" 
+                                                         Size="Size.Small"
+                                                         OnClick="@(() => OpenFallbackDialog(step))"
+                                                         onclick:stopPropagation="true">
+                                                    Fallback
+                                                </MudButton>
+                                            }
                                         </div>
+                                        
+                                        @if (step.IsCancelled)
+                                        {
+                                            <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">Cancelled due to fallback</MudText>
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">Click for details</MudText>
+                                        }
                                     </div>
                                 </MudCardContent>
                             </MudCard>
@@ -530,6 +571,66 @@
     </DialogActions>
 </MudDialog>
 
+<!-- Fallback Dialog -->
+<MudDialog @bind-Visible="_fallbackDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Large, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h5">Fallback Step</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_fallbackStep != null)
+        {
+            <MudText Typo="Typo.h6" Class="mb-4">
+                Fallback from: @_fallbackStep.Name
+            </MudText>
+
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Available Fallback Steps:</MudText>
+            @if (_fallbackStep.FallbackSteps.Any())
+            {
+                <MudList T="string" Dense="true" Class="mb-4">
+                    @foreach (var fallbackStep in _fallbackStep.FallbackSteps.OrderBy(s => s.Order))
+                    {
+                        <MudListItem T="string" Class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.ArrowRight" Size="Size.Small" Class="mr-2" />
+                            <div>
+                                <MudText Typo="Typo.body1">@fallbackStep.Name</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                    Assigned to: @string.Join(", ", fallbackStep.AssignedMembers.Select(m => m.Name))
+                                </MudText>
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Reason for Fallback (Required):</MudText>
+                <MudTextField @bind-Value="_fallbackReason" 
+                             Label="Fallback Reason" 
+                             Lines="3" 
+                             Required="true"
+                             Class="mb-4"
+                             Placeholder="Explain why fallback is necessary..." />
+
+                <MudAlert Severity="Severity.Warning" Class="mb-3">
+                    This action will:
+                    <ul>
+                        <li>Create an approval step requiring approval from all affected team members</li>
+                        <li>If approved, insert the fallback steps and cancel remaining steps</li>
+                        <li>If denied, continue with normal execution</li>
+                    </ul>
+                </MudAlert>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseFallbackDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" 
+                 Color="Color.Warning" 
+                 OnClick="SubmitFallback"
+                 Disabled="@(string.IsNullOrWhiteSpace(_fallbackReason))">
+            Request Fallback Approval
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
 @code {
     [Parameter]
     public int? Id { get; set; }
@@ -556,6 +657,11 @@
     private ExecutionStep? _approvalStep;
     private PlanMember? _selectedApprover;
     private ExecutionStepApproval? _currentApproval;
+    
+    // Fallback dialog fields
+    private bool _fallbackDialogVisible = false;
+    private ExecutionStep? _fallbackStep;
+    private string _fallbackReason = string.Empty;
     
     [Inject] 
     private FileService? _fileService { get; set; }
@@ -889,18 +995,92 @@
         var approvedStep = _execution.Steps.FirstOrDefault(s => s.Id == stepId);
         if (approvedStep != null && ExecutionService.IsStepComplete(approvedStep))
         {
-            var nextStep = _execution.Steps
-                .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != stepId)
-                .OrderBy(s => s.Order)
-                .FirstOrDefault();
-                
-            if (nextStep != null)
+            // If this was a fallback approval step, execute the fallback
+            if (approvedStep.StepType == StepType.Fallback)
             {
-                _selectedStep = nextStep;
+                try
+                {
+                    var newSteps = await ExecutionService.ExecuteFallbackAsync(_execution.Id, approvedStep.Id);
+                    Snackbar.Add($"Fallback executed successfully. {newSteps.Count} fallback steps added.", Severity.Success);
+                    
+                    // Reload execution to get the updated state
+                    _execution = await ExecutionService.GetExecutionAsync(_execution.Id);
+                    
+                    // Select the first new fallback step
+                    if (newSteps.Any())
+                    {
+                        _selectedStep = _execution.Steps.FirstOrDefault(s => s.Id == newSteps.First().Id) ?? _selectedStep;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Error executing fallback: {ex.Message}", Severity.Error);
+                }
+            }
+            else
+            {
+                // Regular step completion - find next step
+                var nextStep = _execution.Steps
+                    .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != stepId)
+                    .OrderBy(s => s.Order)
+                    .FirstOrDefault();
+                    
+                if (nextStep != null)
+                {
+                    _selectedStep = nextStep;
+                }
             }
         }
-        
         // Force UI refresh to update step highlighting
         StateHasChanged();
+    }
+    
+    // Fallback methods
+    private void OpenFallbackDialog(ExecutionStep step)
+    {
+        _fallbackStep = step;
+        _fallbackReason = string.Empty;
+        _fallbackDialogVisible = true;
+    }
+    
+    private void CloseFallbackDialog()
+    {
+        _fallbackDialogVisible = false;
+        _fallbackStep = null;
+        _fallbackReason = string.Empty;
+    }
+    
+    private async Task SubmitFallback()
+    {
+        if (_fallbackStep == null || string.IsNullOrWhiteSpace(_fallbackReason))
+            return;
+            
+        try
+        {
+            // Get the IDs of the fallback steps
+            var fallbackStepIds = _fallbackStep.FallbackSteps.Select(s => s.Id).ToList();
+            
+            // Create fallback approval step
+            var approvalStep = await ExecutionService.CreateFallbackApprovalStepAsync(
+                _execution.Id, 
+                _fallbackStep.Id, 
+                _fallbackReason, 
+                fallbackStepIds);
+            
+            Snackbar.Add($"Fallback approval step created. Waiting for team approval.", Severity.Info);
+            CloseFallbackDialog();
+            
+            // Reload execution to show the new approval step
+            _execution = await ExecutionService.GetExecutionAsync(_execution.Id);
+            
+            // Select the new approval step
+            _selectedStep = _execution.Steps.FirstOrDefault(s => s.Id == approvalStep.Id) ?? _selectedStep;
+            
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating fallback approval: {ex.Message}", Severity.Error);
+        }
     }
 }
