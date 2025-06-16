@@ -2,6 +2,7 @@
 @page "/executions/create/{PlanId:int}"
 @using StepCue.TenantApp.Core.Services
 @using StepCue.TenantApp.Data.Models.Execution
+@using StepCue.TenantApp.Data.Models.Planning
 @using StepCue.TenantApp.Web.Services
 @inject ExecutionService ExecutionService
 @inject NavigationManager NavigationManager
@@ -100,7 +101,7 @@
             <MudCardContent>
                 <MudText Typo="Typo.h6" Class="mb-3">Overall Progress</MudText>
                 <MudProgressLinear Color="Color.Primary" Value="@GetExecutionProgress()" Class="mb-2" />
-                <MudText Typo="Typo.caption">@(_execution.Steps.Count(s => s.CompleteOn.HasValue)) of @_execution.Steps.Count steps completed</MudText>
+                <MudText Typo="Typo.caption">@(_execution.Steps.Count(s => ExecutionService.IsStepComplete(s))) of @_execution.Steps.Count steps completed</MudText>
                 
                 <!-- Horizontal step indicators -->
                 <div class="d-flex justify-center mt-3" style="gap: 8px;">
@@ -108,7 +109,7 @@
                     {
                         var step = _execution.Steps[i];
                         var stepNumber = i + 1;
-                        var isCompleted = step.CompleteOn.HasValue;
+                        var isCompleted = ExecutionService.IsStepComplete(step);
                         var isStarted = step.StartedOn.HasValue;
                         var isCurrent = _selectedStep?.Id == step.Id;
                         
@@ -142,7 +143,7 @@
                     {
                         var step = _execution.Steps[i];
                         var isLast = i == _execution.Steps.Count - 1;
-                        var isCompleted = step.CompleteOn.HasValue;
+                        var isCompleted = ExecutionService.IsStepComplete(step);
                         var isStarted = step.StartedOn.HasValue;
                         var canStart = CanStartStep(step);
                         var isHighlighted = IsStepHighlighted(step);
@@ -170,19 +171,27 @@
                                    Style="cursor: pointer;">
                                 <MudCardContent>
                                     <div class="d-flex justify-space-between align-center mb-2">
-                                        <MudText Typo="Typo.h6">@step.Name</MudText>
-                                        @if (isStarted && !isCompleted)
-                                        {
-                                            <MudChip T="string" Color="Color.Info" Size="Size.Small">@GetTimeSinceStarted(step)</MudChip>
-                                        }
-                                        else if (isCompleted)
-                                        {
-                                            <MudChip T="string" Color="Color.Success" Size="Size.Small">Completed</MudChip>
-                                        }
-                                        else if (!canStart)
-                                        {
-                                            <MudChip T="string" Color="Color.Default" Size="Size.Small">Waiting</MudChip>
-                                        }
+                                        <div class="d-flex align-center" style="gap: 8px;">
+                                            <MudText Typo="Typo.h6">@step.Name</MudText>
+                                            @if (step.StepType == StepCue.TenantApp.Data.Models.Planning.StepType.GoNoGo)
+                                            {
+                                                <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="Variant.Outlined">Go/NoGo</MudChip>
+                                            }
+                                        </div>
+                                        <div>
+                                            @if (isStarted && !isCompleted)
+                                            {
+                                                <MudChip T="string" Color="Color.Info" Size="Size.Small">@GetTimeSinceStarted(step)</MudChip>
+                                            }
+                                            else if (isCompleted)
+                                            {
+                                                <MudChip T="string" Color="Color.Success" Size="Size.Small">Completed</MudChip>
+                                            }
+                                            else if (!canStart)
+                                            {
+                                                <MudChip T="string" Color="Color.Default" Size="Size.Small">Waiting</MudChip>
+                                            }
+                                        </div>
                                     </div>
                                     
                                     @if (!string.IsNullOrEmpty(step.Summary))
@@ -225,7 +234,17 @@
                                         <div class="d-flex gap-2 align-center">
                                             @if (!isCompleted && canStart)
                                             {
-                                                @if (!isStarted)
+                                                @if (step.StepType == StepCue.TenantApp.Data.Models.Planning.StepType.GoNoGo)
+                                                {
+                                                    <MudButton Variant="Variant.Filled" 
+                                                             Color="Color.Warning" 
+                                                             Size="Size.Small"
+                                                             OnClick="@(async () => await OpenStepApprovalDialog(step))"
+                                                             onclick:stopPropagation="true">
+                                                        Approve
+                                                    </MudButton>
+                                                }
+                                                else if (!isStarted)
                                                 {
                                                     <MudButton Variant="Variant.Filled" 
                                                              Color="Color.Primary" 
@@ -456,6 +475,61 @@
     </DialogActions>
 </MudDialog>
 
+<!-- Step Approval Dialog -->
+<MudDialog @bind-Visible="_approvalDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Medium, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h5">Approve Step: @_approvalStep?.Name</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_approvalStep != null)
+        {
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        This is a go/nogo step that requires approval from all assigned team members before it can be considered complete.
+                    </MudText>
+                    
+                    @if (_currentApproval != null)
+                    {
+                        <MudTextField @bind-Value="_currentApproval.Comments"
+                                    Label="Approval Comments" 
+                                    Lines="3" 
+                                    Class="mb-3"
+                                    Required="true"
+                                    HelperText="Please provide comments for your approval decision" />
+                    }
+                                
+                    @if (_approvalStep.AssignedMembers != null && _approvalStep.AssignedMembers.Any())
+                    {
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Select your role for this approval:</MudText>
+                        <MudSelect T="PlanMember" Value="_selectedApprover" 
+                                   Label="Approving as" 
+                                   Variant="Variant.Outlined" 
+                                   Required="true"
+                                   ToStringFunc="@(m => string.IsNullOrEmpty(m?.Name) ? "Unnamed Member" : m.Name)"
+                                   ValueChanged="OnApproverChanged">
+                            @foreach (var member in _approvalStep.AssignedMembers)
+                            {
+                                var memberName = string.IsNullOrEmpty(member.Name) ? "Unnamed Member" : member.Name;
+                                <MudSelectItem T="PlanMember" Value="@member">@memberName</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                </MudItem>
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseApprovalDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" 
+                 Color="Color.Warning" 
+                 OnClick="SubmitStepApproval"
+                 Disabled="@(_selectedApprover == null || string.IsNullOrWhiteSpace(_currentApproval?.Comments))">
+            Approve
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
 @code {
     [Parameter]
     public int? Id { get; set; }
@@ -477,8 +551,14 @@
     private string _completionCouldBeBetter = string.Empty;
     private byte[]? _completionScreenshot;
     
+    // Approval dialog fields
+    private bool _approvalDialogVisible = false;
+    private ExecutionStep? _approvalStep;
+    private PlanMember? _selectedApprover;
+    private ExecutionStepApproval? _currentApproval;
+    
     [Inject] 
-    private FileService _fileService { get; set; }
+    private FileService? _fileService { get; set; }
     
     protected override async Task OnInitializedAsync()
     {
@@ -510,7 +590,7 @@
             if (_execution?.Steps.Count > 0)
             {
                 // Select first incomplete step, or the last step if all are complete
-                _selectedStep = _execution.Steps.FirstOrDefault(s => !s.CompleteOn.HasValue) ?? 
+                _selectedStep = _execution.Steps.FirstOrDefault(s => !ExecutionService.IsStepComplete(s)) ?? 
                                _execution.Steps.Last();
             }
         }
@@ -552,7 +632,7 @@
     {
         if (_execution?.Steps == null || !_execution.Steps.Any()) return 0;
         
-        var completedSteps = _execution.Steps.Count(s => s.CompleteOn.HasValue);
+        var completedSteps = _execution.Steps.Count(s => ExecutionService.IsStepComplete(s));
         return (double)completedSteps / _execution.Steps.Count * 100;
     }
     
@@ -599,7 +679,7 @@
         if (step == _selectedStep)
         {
             var nextStep = _execution.Steps
-                .Where(s => !s.CompleteOn.HasValue && s.Id != step.Id)
+                .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != step.Id)
                 .OrderBy(s => s.Order)
                 .FirstOrDefault();
                 
@@ -612,7 +692,7 @@
     
     private string GetStepIcon(ExecutionStep step)
     {
-        if (step.CompleteOn.HasValue)
+        if (ExecutionService.IsStepComplete(step))
             return Icons.Material.Filled.CheckCircle;
         if (step.StartedOn.HasValue)
             return Icons.Material.Filled.PlayCircle;
@@ -621,7 +701,7 @@
     
     private Color GetStepColor(ExecutionStep step)
     {
-        if (step.CompleteOn.HasValue)
+        if (ExecutionService.IsStepComplete(step))
             return Color.Success;
         if (step.StartedOn.HasValue)
             return Color.Info;
@@ -639,7 +719,7 @@
         if (!stepsBeforeThisOne.Any()) return true;
         
         // Check if all previous steps are completed
-        return stepsBeforeThisOne.All(s => s.CompleteOn.HasValue);
+        return stepsBeforeThisOne.All(s => ExecutionService.IsStepComplete(s));
     }
     
     private bool IsStepHighlighted(ExecutionStep step)
@@ -653,10 +733,10 @@
     private bool IsCurrentStep(ExecutionStep step)
     {
         // Current step is the first incomplete step that can be started
-        if (step.CompleteOn.HasValue) return false; // Already completed
+        if (ExecutionService.IsStepComplete(step)) return false; // Already completed
         
         var firstIncompleteStep = _execution.Steps
-            .Where(s => !s.CompleteOn.HasValue && CanStartStep(s))
+            .Where(s => !ExecutionService.IsStepComplete(s) && CanStartStep(s))
             .OrderBy(s => s.Order)
             .FirstOrDefault();
             
@@ -704,7 +784,7 @@
         if (_completionStep == _selectedStep)
         {
             var nextStep = _execution.Steps
-                .Where(s => !s.CompleteOn.HasValue && s.Id != id)
+                .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != id)
                 .OrderBy(s => s.Order)
                 .FirstOrDefault();
                 
@@ -713,5 +793,114 @@
                 _selectedStep = nextStep;
             }
         }
+        
+        // Force UI refresh to update step highlighting
+        StateHasChanged();
+    }
+    
+    private async Task OpenStepApprovalDialog(ExecutionStep step)
+    {
+        // Auto-start the step if it hasn't been started yet (for go/nogo steps)
+        if (!step.StartedOn.HasValue)
+        {
+            step.StartedOn = DateTime.Now;
+            await ExecutionService.UpdateExecutionStepAsync(step);
+        }
+        
+        _approvalStep = step;
+        _selectedApprover = null;
+        _currentApproval = null;
+        _approvalDialogVisible = true;
+    }
+    
+    private void OnApproverChanged(PlanMember selectedApprover)
+    {
+        _selectedApprover = selectedApprover;
+        
+        if (selectedApprover != null)
+        {
+            // Find the corresponding ExecutionMember based on name and email
+            var executionMember = _execution.Members.FirstOrDefault(em => 
+                em.Name == selectedApprover.Name && em.EmailAddress == selectedApprover.EmailAddress);
+                
+            if (executionMember != null)
+            {
+                // Find or create the approval record for this member
+                _currentApproval = _approvalStep.Approvals.FirstOrDefault(a => a.ExecutionMemberId == executionMember.Id);
+                
+                if (_currentApproval == null)
+                {
+                    // Create a new approval record (shouldn't happen in normal flow, but good to handle)
+                    _currentApproval = new ExecutionStepApproval
+                    {
+                        ExecutionStepId = _approvalStep.Id,
+                        ExecutionStep = _approvalStep,
+                        ExecutionMemberId = executionMember.Id,
+                        ExecutionMember = executionMember,
+                        IsApproved = false,
+                        Comments = string.Empty
+                    };
+                }
+            }
+        }
+        else
+        {
+            _currentApproval = null;
+        }
+    }
+    
+    private void CloseApprovalDialog()
+    {
+        _approvalDialogVisible = false;
+        _approvalStep = null;
+        _selectedApprover = null;
+        _currentApproval = null;
+    }
+    
+    private async Task SubmitStepApproval()
+    {
+        if (_approvalStep == null || _selectedApprover == null || _currentApproval == null || string.IsNullOrWhiteSpace(_currentApproval.Comments))
+            return;
+            
+        // Update approval
+        _currentApproval.IsApproved = true;
+        _currentApproval.ApprovalDate = DateTime.Now;
+        
+        if (_currentApproval.Id == 0)
+        {
+            // New approval record - add it
+            await ExecutionService.AddApprovalToStepAsync(_currentApproval);
+            _approvalStep.Approvals.Add(_currentApproval);
+        }
+        else
+        {
+            // Existing approval record - update it
+            await ExecutionService.UpdateStepApprovalAsync(_currentApproval);
+        }
+        
+        Snackbar.Add($"Step approved by {_selectedApprover.Name}", Severity.Success);
+        var stepId = _approvalStep.Id;
+        CloseApprovalDialog();
+        
+        // Reload execution to ensure all relationships and approval data are current
+        _execution = await ExecutionService.GetExecutionAsync(_execution.Id);
+        
+        // Check if the approved step is now complete and select next step if needed
+        var approvedStep = _execution.Steps.FirstOrDefault(s => s.Id == stepId);
+        if (approvedStep != null && ExecutionService.IsStepComplete(approvedStep))
+        {
+            var nextStep = _execution.Steps
+                .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != stepId)
+                .OrderBy(s => s.Order)
+                .FirstOrDefault();
+                
+            if (nextStep != null)
+            {
+                _selectedStep = nextStep;
+            }
+        }
+        
+        // Force UI refresh to update step highlighting
+        StateHasChanged();
     }
 }

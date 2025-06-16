@@ -18,5 +18,6 @@ namespace StepCue.TenantApp.Data.Models.Execution
         public string WhatWentWell { get; set; } = string.Empty;
         public string WhatCouldBeBetter { get; set; } = string.Empty;
         public List<ExecutionStepMessage> Messages { get; set; } = new();
+        public List<ExecutionStepApproval> Approvals { get; set; } = new();
     }
 }
