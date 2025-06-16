@@ -18,7 +18,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
         [Fact]
         public async Task CreateFallbackApprovalStepAsync_ShouldCreateApprovalStep()
         {
-            // Arrange - Create a plan with steps and fallback steps
+            // Arrange - Create a plan with steps and fallback definitions
             var plan = new Plan
             {
                 Name = "Test Plan with Fallback",
@@ -35,25 +35,24 @@ namespace StepCue.TenantApp.Core.Tests.Services
                         Summary = "Main execution step",
                         Order = 1,
                         StepType = StepType.Execution,
-                        AssignedMembers = new List<PlanMember>()
-                    },
-                    new PlanStep 
-                    { 
-                        Name = "Fallback Step", 
-                        Summary = "Fallback step to execute",
-                        Order = 2,
-                        StepType = StepType.Fallback,
-                        AssignedMembers = new List<PlanMember>()
+                        AssignedMembers = new List<PlanMember>(),
+                        FallbackSteps = new List<Fallback>
+                        {
+                            new Fallback
+                            {
+                                Name = "Fallback Action",
+                                Summary = "Fallback action to execute",
+                                Order = 1,
+                                AssignedMembers = new List<PlanMember>()
+                            }
+                        }
                     }
                 }
             };
 
             // Add members to steps
             plan.Steps[0].AssignedMembers.Add(plan.Members[0]);
-            plan.Steps[1].AssignedMembers.Add(plan.Members[1]);
-            
-            // Add fallback relationship
-            plan.Steps[0].FallbackSteps.Add(plan.Steps[1]);
+            plan.Steps[0].FallbackSteps[0].AssignedMembers.Add(plan.Members[1]);
 
             Context.Plans.Add(plan);
             await Context.SaveChangesAsync();
@@ -61,18 +60,16 @@ namespace StepCue.TenantApp.Core.Tests.Services
             // Create execution from plan
             var execution = await _executionService.CreateExecutionFromPlanAsync(plan.Id);
             var mainStep = execution.Steps.First(s => s.Name == "Main Step");
-            var fallbackStep = execution.Steps.First(s => s.Name == "Fallback Step");
 
             // Act - Create fallback approval step
             var approvalStep = await _executionService.CreateFallbackApprovalStepAsync(
                 execution.Id, 
                 mainStep.Id, 
-                "Testing fallback workflow", 
-                new List<int> { fallbackStep.Id });
+                "Testing fallback workflow");
 
             // Assert
             Assert.NotNull(approvalStep);
-            Assert.Equal(StepType.Fallback, approvalStep.StepType);
+            Assert.Equal(StepType.GoNoGo, approvalStep.StepType); // Changed from Fallback to GoNoGo
             Assert.Equal("Testing fallback workflow", approvalStep.FallbackReason);
             Assert.Equal(mainStep.Id, approvalStep.FallbackOriginStepId);
             Assert.Contains("Fallback Approval for Main Step", approvalStep.Name);
@@ -82,13 +79,13 @@ namespace StepCue.TenantApp.Core.Tests.Services
             var reloadedApprovalStep = reloadedExecution.Steps.FirstOrDefault(s => s.Id == approvalStep.Id);
             
             Assert.NotNull(reloadedApprovalStep);
-            Assert.Equal(1, reloadedApprovalStep.Approvals.Count); // Only Jane is assigned to fallback step
+            Assert.Single(reloadedApprovalStep.Approvals); // Only Jane is assigned to fallback
         }
 
         [Fact]
         public async Task ExecuteFallbackAsync_ShouldExecuteFallbackWorkflow()
         {
-            // Arrange - Create execution with fallback approval step
+            // Arrange - Create execution with fallback definitions
             var plan = new Plan
             {
                 Name = "Test Plan for Fallback Execution",
@@ -103,7 +100,17 @@ namespace StepCue.TenantApp.Core.Tests.Services
                         Name = "Original Step", 
                         Order = 1,
                         StepType = StepType.Execution,
-                        AssignedMembers = new List<PlanMember>()
+                        AssignedMembers = new List<PlanMember>(),
+                        FallbackSteps = new List<Fallback>
+                        {
+                            new Fallback
+                            {
+                                Name = "Recovery Step",
+                                Summary = "Recovery action",
+                                Order = 1,
+                                AssignedMembers = new List<PlanMember>()
+                            }
+                        }
                     },
                     new PlanStep 
                     { 
@@ -111,25 +118,14 @@ namespace StepCue.TenantApp.Core.Tests.Services
                         Order = 2,
                         StepType = StepType.Execution,
                         AssignedMembers = new List<PlanMember>()
-                    },
-                    new PlanStep 
-                    { 
-                        Name = "Recovery Step", 
-                        Order = 3,
-                        StepType = StepType.Fallback,
-                        AssignedMembers = new List<PlanMember>()
                     }
                 }
             };
 
-            // Add member to all steps
-            foreach (var step in plan.Steps)
-            {
-                step.AssignedMembers.Add(plan.Members[0]);
-            }
-            
-            // Add fallback relationship
-            plan.Steps[0].FallbackSteps.Add(plan.Steps[2]);
+            // Add member to all steps and fallbacks
+            plan.Steps[0].AssignedMembers.Add(plan.Members[0]);
+            plan.Steps[1].AssignedMembers.Add(plan.Members[0]);
+            plan.Steps[0].FallbackSteps[0].AssignedMembers.Add(plan.Members[0]);
 
             Context.Plans.Add(plan);
             await Context.SaveChangesAsync();
@@ -137,14 +133,12 @@ namespace StepCue.TenantApp.Core.Tests.Services
             var execution = await _executionService.CreateExecutionFromPlanAsync(plan.Id);
             var originalStep = execution.Steps.First(s => s.Name == "Original Step");
             var nextStep = execution.Steps.First(s => s.Name == "Next Step");
-            var recoveryStep = execution.Steps.First(s => s.Name == "Recovery Step");
 
             // Create and approve fallback approval step
             var approvalStep = await _executionService.CreateFallbackApprovalStepAsync(
                 execution.Id, 
                 originalStep.Id, 
-                "Emergency fallback", 
-                new List<int> { recoveryStep.Id });
+                "Emergency fallback");
             
             // Approve the fallback
             var approval = approvalStep.Approvals.First();
@@ -159,6 +153,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
             Assert.Single(newSteps);
             Assert.Equal("Recovery Step", newSteps[0].Name);
             Assert.Equal(originalStep.Id, newSteps[0].FallbackOriginStepId);
+            Assert.Equal(StepType.Execution, newSteps[0].StepType); // Fallbacks become execution steps
 
             // Verify remaining steps were cancelled
             var updatedExecution = await _executionService.GetExecutionAsync(execution.Id);
@@ -187,34 +182,34 @@ namespace StepCue.TenantApp.Core.Tests.Services
                         Name = "Main Step", 
                         Order = 1,
                         StepType = StepType.Execution,
-                        AssignedMembers = new List<PlanMember>()
-                    },
-                    new PlanStep 
-                    { 
-                        Name = "Fallback Step", 
-                        Order = 2,
-                        StepType = StepType.Fallback,
-                        AssignedMembers = new List<PlanMember>()
+                        AssignedMembers = new List<PlanMember>(),
+                        FallbackSteps = new List<Fallback>
+                        {
+                            new Fallback
+                            {
+                                Name = "Fallback Action",
+                                Summary = "Fallback action requiring multiple approvals",
+                                Order = 1,
+                                AssignedMembers = new List<PlanMember>()
+                            }
+                        }
                     }
                 }
             };
 
-            // Assign both members to fallback step
-            plan.Steps[1].AssignedMembers.AddRange(plan.Members);
-            plan.Steps[0].FallbackSteps.Add(plan.Steps[1]);
+            // Assign both members to fallback
+            plan.Steps[0].FallbackSteps[0].AssignedMembers.AddRange(plan.Members);
 
             Context.Plans.Add(plan);
             await Context.SaveChangesAsync();
 
             var execution = await _executionService.CreateExecutionFromPlanAsync(plan.Id);
             var mainStep = execution.Steps.First(s => s.Name == "Main Step");
-            var fallbackStep = execution.Steps.First(s => s.Name == "Fallback Step");
 
             var approvalStep = await _executionService.CreateFallbackApprovalStepAsync(
                 execution.Id, 
                 mainStep.Id, 
-                "Multi-approval test", 
-                new List<int> { fallbackStep.Id });
+                "Multi-approval test");
 
             // Act & Assert - Should not be complete with no approvals
             Assert.False(_executionService.IsStepComplete(approvalStep));

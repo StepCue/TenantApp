@@ -21,7 +21,6 @@ namespace StepCue.TenantApp.Core.Services
                 .Include(e => e.Plan)
                 .Include(e => e.Members)
                 .Include(e => e.Steps).ThenInclude(s => s.AssignedMembers)
-                .Include(e => e.Steps).ThenInclude(s => s.FallbackSteps)
                 .Include(e => e.Steps).ThenInclude(s => s.Approvals).ThenInclude(a => a.ExecutionMember);
         }
 
@@ -39,8 +38,6 @@ namespace StepCue.TenantApp.Core.Services
             var plan = await _context.Plans
                 .Include(p => p.Steps)
                 .ThenInclude(s => s.AssignedMembers)
-                .Include(p => p.Steps)
-                .ThenInclude(s => s.FallbackSteps)
                 .Include(p => p.Members)
                 .FirstOrDefaultAsync(p => p.Id == planId);
 
@@ -65,7 +62,7 @@ namespace StepCue.TenantApp.Core.Services
                 });
             }
 
-            // Copy steps in order
+            // Copy steps in order (excluding fallback steps as they are now separate entities)
             foreach (var step in plan.Steps.OrderBy(s => s.Order))
             {
                 var executionStep = new ExecutionStep
@@ -105,23 +102,6 @@ namespace StepCue.TenantApp.Core.Services
                         IsApproved = false
                     };
                     _context.ExecutionStepApprovals.Add(approval);
-                }
-            }
-
-            // Copy fallback step relationships after steps have IDs
-            foreach (var planStep in plan.Steps)
-            {
-                var executionStep = execution.Steps.FirstOrDefault(es => es.Order == planStep.Order);
-                if (executionStep != null && planStep.FallbackSteps.Any())
-                {
-                    foreach (var fallbackPlanStep in planStep.FallbackSteps)
-                    {
-                        var fallbackExecutionStep = execution.Steps.FirstOrDefault(es => es.Order == fallbackPlanStep.Order);
-                        if (fallbackExecutionStep != null)
-                        {
-                            executionStep.FallbackSteps.Add(fallbackExecutionStep);
-                        }
-                    }
                 }
             }
 
@@ -171,8 +151,8 @@ namespace StepCue.TenantApp.Core.Services
                 return step.CompleteOn.HasValue;
             }
 
-            // For go/nogo and fallback approval steps, check if all assigned members have approved
-            if (step.StepType == Data.Models.Planning.StepType.GoNoGo || step.StepType == Data.Models.Planning.StepType.Fallback)
+            // For go/nogo steps, check if all assigned members have approved
+            if (step.StepType == Data.Models.Planning.StepType.GoNoGo)
             {
                 if (!step.AssignedMembers.Any())
                     return false; // Can't complete an approval step with no assigned members
@@ -187,7 +167,7 @@ namespace StepCue.TenantApp.Core.Services
         }
 
         // Fallback functionality
-        public async Task<ExecutionStep> CreateFallbackApprovalStepAsync(int executionId, int originalStepId, string reason, List<int> fallbackStepIds)
+        public async Task<ExecutionStep> CreateFallbackApprovalStepAsync(int executionId, int originalStepId, string reason)
         {
             var execution = await GetExecutionAsync(executionId);
             if (execution == null)
@@ -197,26 +177,46 @@ namespace StepCue.TenantApp.Core.Services
             if (originalStep == null)
                 throw new ArgumentException("Original step not found");
 
-            // Get all affected members from the fallback steps
-            var fallbackSteps = execution.Steps.Where(s => fallbackStepIds.Contains(s.Id)).ToList();
-            var affectedMembers = fallbackSteps.SelectMany(s => s.AssignedMembers).Distinct().ToList();
+            // Get the plan with its steps and fallback definitions
+            var plan = await _context.Plans
+                .Include(p => p.Steps)
+                .ThenInclude(s => s.FallbackSteps)
+                .ThenInclude(f => f.AssignedMembers)
+                .FirstOrDefaultAsync(p => p.Id == execution.PlanId);
 
-            // Create fallback approval step
+            if (plan == null)
+                throw new ArgumentException("Plan not found");
+
+            // Find the corresponding plan step
+            var planStep = plan.Steps.FirstOrDefault(ps => ps.Order == originalStep.Order);
+
+            if (planStep == null || !planStep.FallbackSteps.Any())
+                throw new ArgumentException("No fallback steps defined for this step");
+
+            // Get all affected members from the fallback definitions
+            var affectedMembers = planStep.FallbackSteps.SelectMany(f => f.AssignedMembers).Distinct().ToList();
+
+            // Create fallback approval step (using GoNoGo type since Fallback type no longer exists)
             var approvalStep = new ExecutionStep
             {
                 Name = $"Fallback Approval for {originalStep.Name}",
                 Summary = $"Approval required for falling back from step '{originalStep.Name}'. Reason: {reason}",
-                StepType = StepType.Fallback,
+                StepType = StepType.GoNoGo, // Changed from Fallback to GoNoGo
                 Order = GetNextOrderValue(execution),
                 ExecutionId = executionId,
                 FallbackOriginStepId = originalStepId,
                 FallbackReason = reason
             };
 
-            // Add affected members to the approval step
-            foreach (var member in affectedMembers)
+            // Map plan members to execution members
+            foreach (var planMember in affectedMembers)
             {
-                approvalStep.AssignedMembers.Add(member);
+                var executionMember = execution.Members.FirstOrDefault(em => 
+                    em.Name == planMember.Name && em.EmailAddress == planMember.EmailAddress);
+                if (executionMember != null)
+                {
+                    approvalStep.AssignedMembers.Add(executionMember);
+                }
             }
 
             execution.Steps.Add(approvalStep);
@@ -224,7 +224,7 @@ namespace StepCue.TenantApp.Core.Services
             await _context.SaveChangesAsync();
 
             // Create approval records for all affected members
-            foreach (var member in affectedMembers)
+            foreach (var member in approvalStep.AssignedMembers)
             {
                 var approval = new ExecutionStepApproval
                 {
@@ -246,23 +246,33 @@ namespace StepCue.TenantApp.Core.Services
                 throw new ArgumentException("Execution not found");
 
             var approvalStep = execution.Steps.FirstOrDefault(s => s.Id == approvalStepId);
-            if (approvalStep == null || approvalStep.StepType != StepType.Fallback)
+            if (approvalStep == null || !approvalStep.FallbackOriginStepId.HasValue)
                 throw new ArgumentException("Approval step not found or invalid");
 
             if (!IsStepComplete(approvalStep))
                 throw new InvalidOperationException("Approval step is not complete");
 
-            var originalStepId = approvalStep.FallbackOriginStepId;
-            if (!originalStepId.HasValue)
-                throw new InvalidOperationException("Original step ID not found");
-
-            var originalStep = execution.Steps.FirstOrDefault(s => s.Id == originalStepId.Value);
+            var originalStepId = approvalStep.FallbackOriginStepId.Value;
+            var originalStep = execution.Steps.FirstOrDefault(s => s.Id == originalStepId);
             if (originalStep == null)
                 throw new ArgumentException("Original step not found");
 
-            // Get the fallback steps to execute
-            var fallbackSteps = originalStep.FallbackSteps.ToList();
-            
+            // Get the plan with its steps and fallback definitions
+            var plan = await _context.Plans
+                .Include(p => p.Steps)
+                .ThenInclude(s => s.FallbackSteps)
+                .ThenInclude(f => f.AssignedMembers)
+                .FirstOrDefaultAsync(p => p.Id == execution.PlanId);
+
+            if (plan == null)
+                throw new ArgumentException("Plan not found");
+
+            // Find the corresponding plan step
+            var planStep = plan.Steps.FirstOrDefault(ps => ps.Order == originalStep.Order);
+
+            if (planStep == null || !planStep.FallbackSteps.Any())
+                throw new ArgumentException("No fallback definitions found for this step");
+
             // Cancel all remaining steps after the original step
             var stepsToCancel = execution.Steps.Where(s => s.Order > originalStep.Order && !s.IsCancelled).ToList();
             foreach (var step in stepsToCancel)
@@ -270,49 +280,37 @@ namespace StepCue.TenantApp.Core.Services
                 step.IsCancelled = true;
             }
 
-            // Create new execution steps for the fallback steps
+            // Create new execution steps for the fallback definitions (in reverse order as requested)
             var newSteps = new List<ExecutionStep>();
             var currentOrder = GetNextOrderValue(execution);
 
-            foreach (var fallbackStep in fallbackSteps.OrderBy(s => s.Order))
+            foreach (var fallback in planStep.FallbackSteps.OrderByDescending(f => f.Order))
             {
                 var newStep = new ExecutionStep
                 {
-                    Name = fallbackStep.Name,
-                    Summary = fallbackStep.Summary,
-                    Screenshot = fallbackStep.Screenshot,
-                    StepType = fallbackStep.StepType,
+                    Name = fallback.Name,
+                    Summary = fallback.Summary,
+                    Screenshot = fallback.Screenshot,
+                    StepType = StepType.Execution, // Fallback definitions become execution steps
                     Order = currentOrder++,
                     ExecutionId = executionId,
-                    FallbackOriginStepId = originalStepId.Value
+                    FallbackOriginStepId = originalStepId
                 };
 
-                // Copy assigned members
-                foreach (var member in fallbackStep.AssignedMembers)
+                // Map plan members to execution members
+                foreach (var planMember in fallback.AssignedMembers)
                 {
-                    newStep.AssignedMembers.Add(member);
+                    var executionMember = execution.Members.FirstOrDefault(em => 
+                        em.Name == planMember.Name && em.EmailAddress == planMember.EmailAddress);
+                    if (executionMember != null)
+                    {
+                        newStep.AssignedMembers.Add(executionMember);
+                    }
                 }
 
                 execution.Steps.Add(newStep);
                 newSteps.Add(newStep);
                 _context.ExecutionSteps.Add(newStep);
-            }
-
-            await _context.SaveChangesAsync();
-
-            // Create approval records for any new go/nogo steps
-            foreach (var step in newSteps.Where(s => s.StepType == StepType.GoNoGo))
-            {
-                foreach (var member in step.AssignedMembers)
-                {
-                    var approval = new ExecutionStepApproval
-                    {
-                        ExecutionStepId = step.Id,
-                        ExecutionMemberId = member.Id,
-                        IsApproved = false
-                    };
-                    _context.ExecutionStepApprovals.Add(approval);
-                }
             }
 
             await _context.SaveChangesAsync();

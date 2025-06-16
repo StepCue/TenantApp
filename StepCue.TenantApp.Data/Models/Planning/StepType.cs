@@ -9,7 +9,6 @@ namespace StepCue.TenantApp.Data.Models.Planning
     public enum StepType
     {
         Execution = 0,
-        GoNoGo = 1,
-        Fallback = 2
+        GoNoGo = 1
     }
 }
