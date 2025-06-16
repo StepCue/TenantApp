@@ -18,6 +18,7 @@ namespace StepCue.TenantApp.Core.Services
         {
             return await _context.Plans
                 .Include(p => p.Steps)
+                .ThenInclude(s => s.AssignedMembers)
                 .Include(p => p.Members)
                 .ToListAsync();
         }
@@ -26,6 +27,7 @@ namespace StepCue.TenantApp.Core.Services
         {
             return await _context.Plans
                 .Include(p => p.Steps)
+                .ThenInclude(s => s.AssignedMembers)
                 .Include(p => p.Members)
                 .FirstOrDefaultAsync(p => p.Id == id);
         }
@@ -42,6 +44,7 @@ namespace StepCue.TenantApp.Core.Services
             // Load the existing plan from database to get proper tracking
             var existingPlan = await _context.Plans
                 .Include(p => p.Steps)
+                .ThenInclude(s => s.AssignedMembers)
                 .Include(p => p.Members)
                 .FirstOrDefaultAsync(p => p.Id == plan.Id);
 
@@ -74,7 +77,18 @@ namespace StepCue.TenantApp.Core.Services
                     existingStep.Summary = step.Summary;
                     existingStep.Screenshot = step.Screenshot;
                     existingStep.StepType = step.StepType;
-                    existingStep.AssignedMembers = step.AssignedMembers;
+                    
+                    // Handle AssignedMembers relationship properly
+                    existingStep.AssignedMembers.Clear();
+                    foreach (var assignedMember in step.AssignedMembers)
+                    {
+                        // Find the existing member in the plan's members to ensure proper tracking
+                        var existingMember = existingPlan.Members.FirstOrDefault(m => m.Id == assignedMember.Id);
+                        if (existingMember != null)
+                        {
+                            existingStep.AssignedMembers.Add(existingMember);
+                        }
+                    }
                 }
             }
 

@@ -29,6 +29,23 @@ namespace StepCue.TenantApp.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            // Configure Plan -> Steps relationship
+            modelBuilder.Entity<Plan>()
+                .HasMany(p => p.Steps)
+                .WithOne()
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure Plan -> Members relationship
+            modelBuilder.Entity<Plan>()
+                .HasMany(p => p.Members)
+                .WithOne()
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure PlanStep -> AssignedMembers many-to-many relationship
+            modelBuilder.Entity<PlanStep>()
+                .HasMany(s => s.AssignedMembers)
+                .WithMany();
+
             // Configure Execution -> Steps relationship
             modelBuilder.Entity<Execution>()
                 .HasMany(e => e.Steps)

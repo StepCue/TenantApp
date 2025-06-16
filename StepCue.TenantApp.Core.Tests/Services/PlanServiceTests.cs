@@ -284,5 +284,87 @@ namespace StepCue.TenantApp.Core.Tests.Services
             Assert.Contains(step.AssignedMembers, am => am.Name == "Member 1");
             Assert.Contains(step.AssignedMembers, am => am.Name == "Member 2");
         }
+
+        [Fact]
+        public async Task UpdatePlanAsync_AssignMemberToMultipleSteps_ShouldSaveMemberToAllSteps()
+        {
+            // Arrange - Create a plan with 2 steps and 1 member
+            var member = new PlanMember { Name = "Shared Member", EmailAddress = "shared@test.com" };
+            var step1 = new PlanStep { Name = "Step 1", Summary = "First step", Order = 1 };
+            var step2 = new PlanStep { Name = "Step 2", Summary = "Second step", Order = 2 };
+            
+            var originalPlan = new Plan
+            {
+                Name = "Test Plan",
+                Steps = new List<PlanStep> { step1, step2 },
+                Members = new List<PlanMember> { member }
+            };
+
+            Context.Plans.Add(originalPlan);
+            await Context.SaveChangesAsync();
+
+            // Arrange - Create updated plan with the same member assigned to both steps
+            var updatedPlan = new Plan
+            {
+                Id = originalPlan.Id,
+                Name = "Test Plan",
+                Steps = new List<PlanStep>
+                {
+                    new PlanStep 
+                    { 
+                        Id = step1.Id, 
+                        Name = "Step 1", 
+                        Summary = "First step", 
+                        Order = 1,
+                        AssignedMembers = new List<PlanMember> { new PlanMember { Id = member.Id, Name = member.Name, EmailAddress = member.EmailAddress } }
+                    },
+                    new PlanStep 
+                    { 
+                        Id = step2.Id, 
+                        Name = "Step 2", 
+                        Summary = "Second step", 
+                        Order = 2,
+                        AssignedMembers = new List<PlanMember> { new PlanMember { Id = member.Id, Name = member.Name, EmailAddress = member.EmailAddress } }
+                    }
+                },
+                Members = new List<PlanMember> { new PlanMember { Id = member.Id, Name = member.Name, EmailAddress = member.EmailAddress } }
+            };
+
+            // Act
+            var result = await _planService.UpdatePlanAsync(updatedPlan);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(2, result.Steps.Count);
+            
+            // Verify the member is assigned to both steps
+            var savedStep1 = result.Steps.FirstOrDefault(s => s.Name == "Step 1");
+            var savedStep2 = result.Steps.FirstOrDefault(s => s.Name == "Step 2");
+            
+            Assert.NotNull(savedStep1);
+            Assert.NotNull(savedStep2);
+            Assert.Single(savedStep1.AssignedMembers);
+            Assert.Single(savedStep2.AssignedMembers);
+            Assert.Equal("Shared Member", savedStep1.AssignedMembers.First().Name);
+            Assert.Equal("Shared Member", savedStep2.AssignedMembers.First().Name);
+
+            // Verify changes in database
+            var savedPlan = await Context.Plans
+                .Include(p => p.Steps)
+                .ThenInclude(s => s.AssignedMembers)
+                .Include(p => p.Members)
+                .FirstOrDefaultAsync(p => p.Id == originalPlan.Id);
+
+            Assert.NotNull(savedPlan);
+            var dbStep1 = savedPlan.Steps.FirstOrDefault(s => s.Name == "Step 1");
+            var dbStep2 = savedPlan.Steps.FirstOrDefault(s => s.Name == "Step 2");
+            
+            Assert.NotNull(dbStep1);
+            Assert.NotNull(dbStep2);
+            Assert.Single(dbStep1.AssignedMembers);
+            Assert.Single(dbStep2.AssignedMembers);
+            Assert.Equal("Shared Member", dbStep1.AssignedMembers.First().Name);
+            Assert.Equal("Shared Member", dbStep2.AssignedMembers.First().Name);
+        }
     }
 }
