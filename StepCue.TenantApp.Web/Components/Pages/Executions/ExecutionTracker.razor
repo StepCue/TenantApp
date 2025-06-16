@@ -879,14 +879,18 @@
         }
         
         Snackbar.Add($"Step approved by {_selectedApprover.Name}", Severity.Success);
-        var step = _approvalStep;
+        var stepId = _approvalStep.Id;
         CloseApprovalDialog();
         
-        // Check if step is now complete and select next step if needed
-        if (ExecutionService.IsStepComplete(step) && step == _selectedStep)
+        // Reload execution to ensure all relationships and approval data are current
+        _execution = await ExecutionService.GetExecutionAsync(_execution.Id);
+        
+        // Check if the approved step is now complete and select next step if needed
+        var approvedStep = _execution.Steps.FirstOrDefault(s => s.Id == stepId);
+        if (approvedStep != null && ExecutionService.IsStepComplete(approvedStep))
         {
             var nextStep = _execution.Steps
-                .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != step.Id)
+                .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != stepId)
                 .OrderBy(s => s.Order)
                 .FirstOrDefault();
                 
