@@ -46,6 +46,16 @@ namespace StepCue.TenantApp.Data
                 .HasMany(s => s.AssignedMembers)
                 .WithMany();
 
+            // Configure PlanStep -> FallbackSteps many-to-many relationship
+            modelBuilder.Entity<PlanStep>()
+                .HasMany(s => s.FallbackSteps)
+                .WithMany()
+                .UsingEntity(
+                    "PlanStepFallbackSteps",
+                    j => j.HasOne(typeof(PlanStep)).WithMany().HasForeignKey("FallbackStepId"),
+                    j => j.HasOne(typeof(PlanStep)).WithMany().HasForeignKey("PlanStepId"),
+                    j => j.HasKey("PlanStepId", "FallbackStepId"));
+
             // Configure Execution -> Steps relationship
             modelBuilder.Entity<Execution>()
                 .HasMany(e => e.Steps)

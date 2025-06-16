@@ -19,5 +19,10 @@ namespace StepCue.TenantApp.Data.Models.Execution
         public string WhatCouldBeBetter { get; set; } = string.Empty;
         public List<ExecutionStepMessage> Messages { get; set; } = new();
         public List<ExecutionStepApproval> Approvals { get; set; } = new();
+        
+        // Fallback-related properties
+        public bool IsCancelled { get; set; }
+        public int? FallbackOriginStepId { get; set; }
+        public string FallbackReason { get; set; } = string.Empty;
     }
 }
