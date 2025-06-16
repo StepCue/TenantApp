@@ -234,7 +234,17 @@
                                         <div class="d-flex gap-2 align-center">
                                             @if (!isCompleted && canStart)
                                             {
-                                                @if (!isStarted)
+                                                @if (step.StepType == StepCue.TenantApp.Data.Models.Planning.StepType.GoNoGo)
+                                                {
+                                                    <MudButton Variant="Variant.Filled" 
+                                                             Color="Color.Warning" 
+                                                             Size="Size.Small"
+                                                             OnClick="@(async () => await OpenStepApprovalDialog(step))"
+                                                             onclick:stopPropagation="true">
+                                                        Approve
+                                                    </MudButton>
+                                                }
+                                                else if (!isStarted)
                                                 {
                                                     <MudButton Variant="Variant.Filled" 
                                                              Color="Color.Primary" 
@@ -246,26 +256,13 @@
                                                 }
                                                 else
                                                 {
-                                                    @if (step.StepType == StepCue.TenantApp.Data.Models.Planning.StepType.GoNoGo)
-                                                    {
-                                                        <MudButton Variant="Variant.Filled" 
-                                                                 Color="Color.Warning" 
-                                                                 Size="Size.Small"
-                                                                 OnClick="@(() => OpenStepApprovalDialog(step))"
-                                                                 onclick:stopPropagation="true">
-                                                            Approve
-                                                        </MudButton>
-                                                    }
-                                                    else
-                                                    {
-                                                        <MudButton Variant="Variant.Filled" 
-                                                                 Color="Color.Success" 
-                                                                 Size="Size.Small"
-                                                                 OnClick="@(() => OpenStepCompletionDialog(step))"
-                                                                 onclick:stopPropagation="true">
-                                                            Complete
-                                                        </MudButton>
-                                                    }
+                                                    <MudButton Variant="Variant.Filled" 
+                                                             Color="Color.Success" 
+                                                             Size="Size.Small"
+                                                             OnClick="@(() => OpenStepCompletionDialog(step))"
+                                                             onclick:stopPropagation="true">
+                                                        Complete
+                                                    </MudButton>
                                                 }
                                             }
                                             <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">Click for details</MudText>
@@ -796,10 +793,20 @@
                 _selectedStep = nextStep;
             }
         }
+        
+        // Force UI refresh to update step highlighting
+        StateHasChanged();
     }
     
-    private void OpenStepApprovalDialog(ExecutionStep step)
+    private async Task OpenStepApprovalDialog(ExecutionStep step)
     {
+        // Auto-start the step if it hasn't been started yet (for go/nogo steps)
+        if (!step.StartedOn.HasValue)
+        {
+            step.StartedOn = DateTime.Now;
+            await ExecutionService.UpdateExecutionStepAsync(step);
+        }
+        
         _approvalStep = step;
         _selectedApprover = null;
         _currentApproval = null;
@@ -888,5 +895,8 @@
                 _selectedStep = nextStep;
             }
         }
+        
+        // Force UI refresh to update step highlighting
+        StateHasChanged();
     }
 }
