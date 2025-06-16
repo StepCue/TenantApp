@@ -189,6 +189,7 @@
                                                       Margin="Margin.Dense">
                                                 <MudSelectItem T="StepType" Value="@StepType.Execution">Execution</MudSelectItem>
                                                 <MudSelectItem T="StepType" Value="@StepType.GoNoGo">Go/NoGo</MudSelectItem>
+                                                <MudSelectItem T="StepType" Value="@StepType.Fallback">Fallback</MudSelectItem>
                                             </MudSelect>
                                         </MudTd>
                                     }
@@ -219,6 +220,12 @@
                                                           Color="Color.Primary"
                                                           OnClick="@(() => OpenStepDetailsDialog(context))" 
                                                           Title="More Details" />
+                                            @if (context.FallbackSteps.Any())
+                                            {
+                                                <MudTooltip Text="@($"Has {context.FallbackSteps.Count} fallback step(s)")">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Link" Size="Size.Small" Color="Color.Info" />
+                                                </MudTooltip>
+                                            }
                                             <MudIconButton Icon="@Icons.Material.Filled.Delete" 
                                                           Size="Size.Small" 
                                                           Color="Color.Error"
@@ -261,26 +268,20 @@
 </MudContainer>
 
 <!-- Step Details Dialog -->
-<MudDialog @bind-Visible="_stepDetailsDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Medium, FullWidth = true })">
+<MudDialog @bind-Visible="_stepDetailsDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Large, FullWidth = true })">
     <TitleContent>
         <MudText Typo="Typo.h5">Step Details</MudText>
     </TitleContent>
     <DialogContent>
         @if (_selectedStep != null)
         {
-            <MudTextField @bind-Value="_selectedStep.Summary" 
-                         Label="Description" 
-                         Lines="4" 
-                         Class="mb-3" 
-                         Placeholder="Enter a detailed description for this step..." />
-            
-            <MudText Typo="Typo.subtitle2" Class="mb-2">Step Screenshot</MudText>
-            <ScreenshotUploader @bind-ImageData="_selectedStep.Screenshot" />
+            <StepEditorPopup Step="_selectedStep" 
+                            PlanMembers="_plan.Members" 
+                            PlanSteps="_plan.Steps" 
+                            OnSave="@SaveStepDetails" 
+                            OnCancel="@CloseStepDetailsDialog" />
         }
     </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="CloseStepDetailsDialog">Close</MudButton>
-    </DialogActions>
 </MudDialog>
 
 
@@ -456,5 +457,12 @@
     {
         _stepDetailsDialogVisible = false;
         _selectedStep = null;
+    }
+
+    private async Task SaveStepDetails()
+    {
+        // The step is already updated by binding, just close the dialog
+        CloseStepDetailsDialog();
+        StateHasChanged();
     }
 }

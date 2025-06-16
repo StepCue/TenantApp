@@ -16,6 +16,16 @@
                      Lines="3" 
                      Class="mb-3" />
         
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Step Type</MudText>
+        <MudSelect T="StepType" @bind-Value="Step.StepType" 
+                   Label="Step Type" 
+                   Variant="Variant.Outlined" 
+                   Class="mb-3">
+            <MudSelectItem T="StepType" Value="@StepType.Execution">Execution</MudSelectItem>
+            <MudSelectItem T="StepType" Value="@StepType.GoNoGo">Go/NoGo</MudSelectItem>
+            <MudSelectItem T="StepType" Value="@StepType.Fallback">Fallback</MudSelectItem>
+        </MudSelect>
+        
         <MudText Typo="Typo.subtitle2" Class="mb-2">Assigned Members</MudText>
         @if (PlanMembers != null && PlanMembers.Any())
         {
@@ -41,6 +51,35 @@
             </MudAlert>
         }
         
+        <!-- Fallback Steps - only show for Execution and GoNoGo steps -->
+        @if (Step.StepType != StepType.Fallback)
+        {
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Fallback Steps</MudText>
+            @if (PlanSteps != null && PlanSteps.Any(s => s.StepType == StepType.Fallback))
+            {
+                <MudSelect T="PlanStep" 
+                          MultiSelection="true" 
+                          SelectedValues="Step.FallbackSteps" 
+                          SelectedValuesChanged="OnFallbackStepsChanged"
+                          Label="Select Fallback Steps" 
+                          Variant="Variant.Outlined" 
+                          Class="mb-3"
+                          ToStringFunc="@(s => string.IsNullOrEmpty(s?.Name) ? "Unnamed Step" : s.Name)">
+                    @foreach (var step in PlanSteps.Where(s => s.StepType == StepType.Fallback))
+                    {
+                        var stepName = string.IsNullOrEmpty(step.Name) ? "Unnamed Step" : step.Name;
+                        <MudSelectItem T="PlanStep" Value="@step">@stepName</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-3">
+                    Create fallback steps first to assign them to this step.
+                </MudAlert>
+            }
+        }
+        
         <MudText Typo="Typo.subtitle2" Class="mb-2">Screenshot</MudText>
         <ScreenshotUploader @bind-ImageData="Step.Screenshot" />
         
@@ -58,6 +97,9 @@
     [Parameter] 
     public List<PlanMember> PlanMembers { get; set; } = new();
     
+    [Parameter] 
+    public List<PlanStep> PlanSteps { get; set; } = new();
+    
     [Parameter]
     public EventCallback OnSave { get; set; }
     
@@ -67,6 +109,11 @@
     private void OnAssignedMembersChanged(IEnumerable<PlanMember> selectedMembers)
     {
         Step.AssignedMembers = selectedMembers.ToList();
+    }
+
+    private void OnFallbackStepsChanged(IEnumerable<PlanStep> selectedSteps)
+    {
+        Step.FallbackSteps = selectedSteps.ToList();
     }
 
     private async Task Save()
