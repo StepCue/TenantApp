@@ -3,6 +3,7 @@
 @using StepCue.TenantApp.Core.Services
 @using StepCue.TenantApp.Data.Models.Planning
 @using StepCue.TenantApp.Web.Services
+@using StepCue.TenantApp.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.JSInterop
 @inject PlanService PlanService
@@ -52,15 +53,7 @@
         <MudForm Model="@_plan" @ref="_form">
             <MudCard Elevation="0">
                 <MudCardContent>
-                    <div Class="d-flex gap-3 align-center mb-3">
-                        <MudTextField @bind-Value="_plan.Name" Label="Plan Name" Required="true" RequiredError="Plan name is required" Class="flex-grow-1" />
-                        <MudButton Variant="Variant.Outlined" 
-                                  Color="Color.Secondary" 
-                                  StartIcon="@Icons.Material.Filled.MoreHoriz"
-                                  OnClick="OpenPlanDetailsDialog">
-                            More Details
-                        </MudButton>
-                    </div>
+                    <MudTextField @bind-Value="_plan.Name" Label="Plan Name" Required="true" RequiredError="Plan name is required" />
                     
                     <MudText Typo="Typo.h6" Class="mt-4">Members</MudText>
                     <MemberManager Members="@_plan.Members" />
@@ -221,6 +214,11 @@
                                     @if (_showActionsColumn)
                                     {
                                         <MudTd DataLabel="Actions" Class="@rowClass">
+                                            <MudIconButton Icon="@Icons.Material.Filled.MoreHoriz" 
+                                                          Size="Size.Small" 
+                                                          Color="Color.Primary"
+                                                          OnClick="@(() => OpenStepDetailsDialog(context))" 
+                                                          Title="More Details" />
                                             <MudIconButton Icon="@Icons.Material.Filled.Delete" 
                                                           Size="Size.Small" 
                                                           Color="Color.Error"
@@ -262,25 +260,30 @@
     }
 </MudContainer>
 
-<!-- Plan Details Dialog -->
-<MudDialog @bind-Visible="_planDetailsDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Medium, FullWidth = true })">
+<!-- Step Details Dialog -->
+<MudDialog @bind-Visible="_stepDetailsDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Medium, FullWidth = true })">
     <TitleContent>
-        <MudText Typo="Typo.h5">Plan Details</MudText>
+        <MudText Typo="Typo.h5">Step Details</MudText>
     </TitleContent>
     <DialogContent>
-        <MudTextField @bind-Value="_plan.Description" 
-                     Label="Description" 
-                     Lines="4" 
-                     Class="mb-3" 
-                     Placeholder="Enter a detailed description of this plan..." />
-        
-        <MudText Typo="Typo.subtitle2" Class="mb-2">Plan Screenshot</MudText>
-        <ScreenshotUploader @bind-ImageData="_plan.Screenshot" />
+        @if (_selectedStep != null)
+        {
+            <MudTextField @bind-Value="_selectedStep.Summary" 
+                         Label="Description" 
+                         Lines="4" 
+                         Class="mb-3" 
+                         Placeholder="Enter a detailed description for this step..." />
+            
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Step Screenshot</MudText>
+            <ScreenshotUploader @bind-ImageData="_selectedStep.Screenshot" />
+        }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="ClosePlanDetailsDialog">Close</MudButton>
+        <MudButton OnClick="CloseStepDetailsDialog">Close</MudButton>
     </DialogActions>
 </MudDialog>
+
+
 
 @code {
     [Parameter]
@@ -300,7 +303,8 @@
     private bool _showActionsColumn = true;
     
     private List<PlanStep> _orderedSteps => _plan.Steps;
-    private bool _planDetailsDialogVisible = false;
+    private bool _stepDetailsDialogVisible = false;
+    private PlanStep? _selectedStep;
 
     protected override async Task OnInitializedAsync()
     {
@@ -442,13 +446,15 @@
         }
     }
 
-    private void OpenPlanDetailsDialog()
+    private void OpenStepDetailsDialog(PlanStep step)
     {
-        _planDetailsDialogVisible = true;
+        _selectedStep = step;
+        _stepDetailsDialogVisible = true;
     }
 
-    private void ClosePlanDetailsDialog()
+    private void CloseStepDetailsDialog()
     {
-        _planDetailsDialogVisible = false;
+        _stepDetailsDialogVisible = false;
+        _selectedStep = null;
     }
 }
