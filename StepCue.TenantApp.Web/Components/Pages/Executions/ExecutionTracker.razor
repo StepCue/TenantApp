@@ -662,6 +662,7 @@
     private ExecutionStep? _fallbackStep;
     private string _fallbackReason = string.Empty;
     private List<Fallback> _currentFallbackSteps = new();
+    private Dictionary<int, bool> _stepFallbackAvailability = new();
     
     [Inject] 
     private FileService? _fileService { get; set; }
@@ -676,6 +677,8 @@
             {
                 Id = _execution.Id;
                 NavigationManager.NavigateTo($"/executions/{Id}", replace: true);
+                // Load fallback availability for the new execution
+                await LoadFallbackAvailabilityAsync();
             }
             else
             {
@@ -691,6 +694,11 @@
             {
                 NavigationManager.NavigateTo("/executions");
                 Snackbar.Add("Execution not found", Severity.Error);
+            }
+            else
+            {
+                // Load fallback availability for the existing execution
+                await LoadFallbackAvailabilityAsync();
             }
             
             if (_execution?.Steps.Count > 0)
@@ -990,6 +998,7 @@
         
         // Reload execution to ensure all relationships and approval data are current
         _execution = await ExecutionService.GetExecutionAsync(_execution.Id);
+        await LoadFallbackAvailabilityAsync();
         
         // Check if the approved step is now complete and select next step if needed
         var approvedStep = _execution.Steps.FirstOrDefault(s => s.Id == stepId);
@@ -1005,6 +1014,7 @@
                     
                     // Reload execution to get the updated state
                     _execution = await ExecutionService.GetExecutionAsync(_execution.Id);
+                    await LoadFallbackAvailabilityAsync();
                     
                     // Select the first new fallback step
                     if (newSteps.Any())
@@ -1038,17 +1048,31 @@
     // Helper method to check if a step has fallback definitions
     private bool HasFallbackSteps(ExecutionStep step)
     {
-        // For now, return false since we need to implement the plan lookup
-        // This will be implemented once we can access the plan with fallback definitions
-        return false;
+        return _stepFallbackAvailability.GetValueOrDefault(step.Order, false);
+    }
+    
+    // Helper method to load fallback availability for all steps
+    private async Task LoadFallbackAvailabilityAsync()
+    {
+        _stepFallbackAvailability.Clear();
+        
+        if (_execution?.Steps == null)
+            return;
+        
+        foreach (var step in _execution.Steps)
+        {
+            var hasFeatures = await ExecutionService.HasFallbackStepsAsync(_execution.Id, step.Order);
+            _stepFallbackAvailability[step.Order] = hasFeatures;
+        }
     }
     
     // Helper method to load fallback definitions for a step
     private async Task<List<Fallback>> LoadFallbackStepsAsync(ExecutionStep step)
     {
-        // This method should load the fallback definitions from the plan
-        // For now, return empty list until we implement the plan lookup
-        return new List<Fallback>();
+        if (_execution == null)
+            return new List<Fallback>();
+        
+        return await ExecutionService.GetFallbackStepsAsync(_execution.Id, step.Order);
     }
     
     // Fallback methods
@@ -1087,6 +1111,7 @@
             
             // Reload execution to show the new approval step
             _execution = await ExecutionService.GetExecutionAsync(_execution.Id);
+            await LoadFallbackAvailabilityAsync();
             
             // Select the new approval step
             _selectedStep = _execution.Steps.FirstOrDefault(s => s.Id == approvalStep.Id) ?? _selectedStep;

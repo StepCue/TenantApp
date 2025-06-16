@@ -321,5 +321,37 @@ namespace StepCue.TenantApp.Core.Services
         {
             return execution.Steps.Any() ? execution.Steps.Max(s => s.Order) + 1 : 1;
         }
+
+        // Helper methods for fallback definitions
+        public async Task<bool> HasFallbackStepsAsync(int executionId, int stepOrder)
+        {
+            var execution = await _context.Executions
+                .Include(e => e.Plan)
+                .ThenInclude(p => p.Steps)
+                .ThenInclude(s => s.FallbackSteps)
+                .FirstOrDefaultAsync(e => e.Id == executionId);
+
+            if (execution?.Plan == null)
+                return false;
+
+            var planStep = execution.Plan.Steps.FirstOrDefault(ps => ps.Order == stepOrder);
+            return planStep?.FallbackSteps.Any() ?? false;
+        }
+
+        public async Task<List<Fallback>> GetFallbackStepsAsync(int executionId, int stepOrder)
+        {
+            var execution = await _context.Executions
+                .Include(e => e.Plan)
+                .ThenInclude(p => p.Steps)
+                .ThenInclude(s => s.FallbackSteps)
+                .ThenInclude(f => f.AssignedMembers)
+                .FirstOrDefaultAsync(e => e.Id == executionId);
+
+            if (execution?.Plan == null)
+                return new List<Fallback>();
+
+            var planStep = execution.Plan.Steps.FirstOrDefault(ps => ps.Order == stepOrder);
+            return planStep?.FallbackSteps ?? new List<Fallback>();
+        }
     }
 }
