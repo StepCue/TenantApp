@@ -872,13 +872,14 @@
         }
         
         Snackbar.Add($"Step approved by {_selectedApprover.Name}", Severity.Success);
+        var step = _approvalStep;
         CloseApprovalDialog();
         
         // Check if step is now complete and select next step if needed
-        if (ExecutionService.IsStepComplete(_approvalStep) && _approvalStep == _selectedStep)
+        if (ExecutionService.IsStepComplete(step) && step == _selectedStep)
         {
             var nextStep = _execution.Steps
-                .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != _approvalStep.Id)
+                .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != step.Id)
                 .OrderBy(s => s.Order)
                 .FirstOrDefault();
                 
