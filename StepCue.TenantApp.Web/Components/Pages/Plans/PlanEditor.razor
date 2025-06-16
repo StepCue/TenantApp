@@ -52,7 +52,15 @@
         <MudForm Model="@_plan" @ref="_form">
             <MudCard Elevation="0">
                 <MudCardContent>
-                    <MudTextField @bind-Value="_plan.Name" Label="Plan Name" Required="true" RequiredError="Plan name is required" />
+                    <div Class="d-flex gap-3 align-center mb-3">
+                        <MudTextField @bind-Value="_plan.Name" Label="Plan Name" Required="true" RequiredError="Plan name is required" Class="flex-grow-1" />
+                        <MudButton Variant="Variant.Outlined" 
+                                  Color="Color.Secondary" 
+                                  StartIcon="@Icons.Material.Filled.MoreHoriz"
+                                  OnClick="OpenPlanDetailsDialog">
+                            More Details
+                        </MudButton>
+                    </div>
                     
                     <MudText Typo="Typo.h6" Class="mt-4">Members</MudText>
                     <MemberManager Members="@_plan.Members" />
@@ -254,6 +262,26 @@
     }
 </MudContainer>
 
+<!-- Plan Details Dialog -->
+<MudDialog @bind-Visible="_planDetailsDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Medium, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h5">Plan Details</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_plan.Description" 
+                     Label="Description" 
+                     Lines="4" 
+                     Class="mb-3" 
+                     Placeholder="Enter a detailed description of this plan..." />
+        
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Plan Screenshot</MudText>
+        <ScreenshotUploader @bind-ImageData="_plan.Screenshot" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="ClosePlanDetailsDialog">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
 @code {
     [Parameter]
     public int? Id { get; set; }
@@ -272,6 +300,7 @@
     private bool _showActionsColumn = true;
     
     private List<PlanStep> _orderedSteps => _plan.Steps;
+    private bool _planDetailsDialogVisible = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -411,5 +440,15 @@
             
             NavigationManager.NavigateTo("/plans");
         }
+    }
+
+    private void OpenPlanDetailsDialog()
+    {
+        _planDetailsDialogVisible = true;
+    }
+
+    private void ClosePlanDetailsDialog()
+    {
+        _planDetailsDialogVisible = false;
     }
 }

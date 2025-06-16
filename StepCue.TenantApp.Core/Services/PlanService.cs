@@ -55,6 +55,8 @@ namespace StepCue.TenantApp.Core.Services
 
             // Update plan properties
             existingPlan.Name = plan.Name;
+            existingPlan.Description = plan.Description;
+            existingPlan.Screenshot = plan.Screenshot;
 
             // Handle steps - collect new ones and update existing ones
             var newSteps = plan.Steps.Where(s => s.Id == 0).ToList();

@@ -10,6 +10,8 @@ namespace StepCue.TenantApp.Data.Models.Planning
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public byte[]? Screenshot { get; set; }
         public List<PlanStep> Steps { get; set; } = new();
         public List<PlanMember> Members { get; set; } = new();
     }
