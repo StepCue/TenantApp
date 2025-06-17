@@ -351,51 +351,7 @@
 
 
 
-<!-- Step Completion Dialog -->
-<MudDialog @bind-Visible="_completionDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Medium, FullWidth = true })">
-    <TitleContent>
-        <MudText Typo="Typo.h5">Complete Step: @_completionStep?.Name</MudText>
-    </TitleContent>
-    <DialogContent>
-        @if (_completionStep != null)
-        {
-            <MudGrid>
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="_completionResultSummary"
-                                Label="Results of the change" 
-                                Lines="3" 
-                                Class="mb-3"
-                                Required="true"
-                                HelperText="Describe what was accomplished in this step" />
-                    
-                    <MudTextField @bind-Value="_completionWentWell"
-                                Label="What went well" 
-                                Lines="3" 
-                                Class="mb-3"
-                                HelperText="Highlight positive aspects and successes" />
-                    
-                    <MudTextField @bind-Value="_completionCouldBeBetter"
-                                Label="What could be better" 
-                                Lines="3" 
-                                Class="mb-3"
-                                HelperText="Note areas for improvement or challenges faced" />
-                    
-                    <MudText Class="mb-2">Screenshot Evidence</MudText>
-                    <ScreenshotUploader @bind-ImageData="_completionScreenshot" />
-                </MudItem>
-            </MudGrid>
-        }
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="CloseCompletionDialog">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" 
-                 Color="Color.Success" 
-                 OnClick="SubmitStepCompletion"
-                 Disabled="@(string.IsNullOrWhiteSpace(_completionResultSummary))">
-            Complete Step
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+
 
 <!-- Step Approval Dialog -->
 <MudDialog @bind-Visible="_approvalDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Medium, FullWidth = true })">
@@ -553,14 +509,6 @@
     private Execution _execution;
     private ExecutionStep _selectedStep;
     private ExecutionMember? _selectedMemberToHighlight;
-    
-    // Completion dialog fields
-    private bool _completionDialogVisible = false;
-    private ExecutionStep _completionStep;
-    private string _completionResultSummary = string.Empty;
-    private string _completionWentWell = string.Empty;
-    private string _completionCouldBeBetter = string.Empty;
-    private byte[]? _completionScreenshot;
     
     // Approval dialog fields
     private bool _approvalDialogVisible = false;
@@ -774,60 +722,49 @@
         return firstIncompleteStep?.Id == step.Id;
     }
     
-    private void OpenStepCompletionDialog(ExecutionStep step)
+    private async Task OpenStepCompletionDialog(ExecutionStep step)
     {
-        _completionStep = step;
-        _completionResultSummary = step.ResultSummary ?? string.Empty;
-        _completionWentWell = step.WhatWentWell ?? string.Empty;
-        _completionCouldBeBetter = step.WhatCouldBeBetter ?? string.Empty;
-        _completionScreenshot = step.ResultScreenshot;
-        _completionDialogVisible = true;
-    }
-    
-    private void CloseCompletionDialog()
-    {
-        _completionDialogVisible = false;
-        _completionStep = null;
-        _completionResultSummary = string.Empty;
-        _completionWentWell = string.Empty;
-        _completionCouldBeBetter = string.Empty;
-        _completionScreenshot = null;
-    }
-    
-    private async Task SubmitStepCompletion()
-    {
-        if (_completionStep == null || string.IsNullOrWhiteSpace(_completionResultSummary))
-            return;
-            
-        _completionStep.CompleteOn = DateTime.Now;
-        _completionStep.ResultSummary = _completionResultSummary;
-        _completionStep.WhatWentWell = _completionWentWell;
-        _completionStep.WhatCouldBeBetter = _completionCouldBeBetter;
-        _completionStep.ResultScreenshot = _completionScreenshot;
-        
-        await ExecutionService.UpdateExecutionStepAsync(_completionStep);
-        Snackbar.Add("Step completed successfully", Severity.Success);
-
-        var id = _completionStep.Id;
-        CloseCompletionDialog();
-        
-        // Select next incomplete step if available and we're working with the main selected step
-        if (_completionStep == _selectedStep)
+        var model = new StepCompletionDialogModel
         {
-            var nextStep = _execution.Steps
-                .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != id)
-                .OrderBy(s => s.Order)
-                .FirstOrDefault();
-                
-            if (nextStep != null)
-            {
-                _selectedStep = nextStep;
-            }
-        }
+            Step = step,
+            ResultSummary = step.ResultSummary ?? string.Empty,
+            WentWell = step.WhatWentWell ?? string.Empty,
+            CouldBeBetter = step.WhatCouldBeBetter ?? string.Empty,
+            Screenshot = step.ResultScreenshot
+        };
         
-        // Force UI refresh to update step highlighting
-        StateHasChanged();
+        var parameters = new DialogParameters<StepCompletionDialog>
+        {
+            { x => x.Model, model }
+        };
+        
+        var dialog = await DialogService.ShowAsync<StepCompletionDialog>("Complete Step", parameters);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled && result.Data is StepCompletionDialogModel resultModel)
+        {
+            // Refresh the execution data to get latest updates
+            _execution = await ExecutionService.GetExecutionAsync(_execution.Id);
+            
+            // Select next incomplete step if available and we're working with the main selected step
+            if (step == _selectedStep)
+            {
+                var nextStep = _execution.Steps
+                    .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != step.Id)
+                    .OrderBy(s => s.Order)
+                    .FirstOrDefault();
+                    
+                if (nextStep != null)
+                {
+                    _selectedStep = nextStep;
+                }
+            }
+            
+            StateHasChanged();
+        }
     }
+    
+
     
     private async Task OpenStepApprovalDialog(ExecutionStep step)
     {

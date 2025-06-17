@@ -1,0 +1,85 @@
+@using StepCue.TenantApp.Web.Components.Dialogs.Models
+@using StepCue.TenantApp.Data.Models.Execution
+@using StepCue.TenantApp.Core.Services
+@inject ExecutionService ExecutionService
+@inject ISnackbar Snackbar
+
+<MudDialog Options="@(new DialogOptions() { MaxWidth = MaxWidth.Medium, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h5">Complete Step: @Model.Step?.Name</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (Model.Step != null)
+        {
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Model.ResultSummary"
+                                Label="Results of the change" 
+                                Lines="3" 
+                                Class="mb-3"
+                                Required="true"
+                                HelperText="Describe what was accomplished in this step" />
+                    
+                    <MudTextField @bind-Value="Model.WentWell"
+                                Label="What went well" 
+                                Lines="3" 
+                                Class="mb-3"
+                                HelperText="Highlight positive aspects and successes" />
+                    
+                    <MudTextField @bind-Value="Model.CouldBeBetter"
+                                Label="What could be better" 
+                                Lines="3" 
+                                Class="mb-3"
+                                HelperText="Note areas for improvement or challenges faced" />
+                    
+                    <MudText Class="mb-2">Screenshot Evidence</MudText>
+                    <ScreenshotUploader @bind-ImageData="Model.Screenshot" />
+                </MudItem>
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="HandleCancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" 
+                 Color="Color.Success" 
+                 OnClick="HandleComplete"
+                 Disabled="@(string.IsNullOrWhiteSpace(Model.ResultSummary))">
+            Complete Step
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    IDialogReference DialogReference { get; set; } = default!;
+
+    [Parameter] 
+    public StepCompletionDialogModel Model { get; set; } = new();
+
+    private async Task HandleComplete()
+    {
+        if (Model.Step != null)
+        {
+            Model.Step.ResultSummary = Model.ResultSummary;
+            Model.Step.WhatWentWell = Model.WentWell;
+            Model.Step.WhatCouldBeBetter = Model.CouldBeBetter;
+            Model.Step.CompleteOn = DateTime.Now;
+            
+            // Set the screenshot if provided
+            if (Model.Screenshot != null)
+            {
+                Model.Step.ResultScreenshot = Model.Screenshot;
+            }
+            
+            await ExecutionService.UpdateExecutionStepAsync(Model.Step);
+            Snackbar.Add("Step completed successfully", Severity.Success);
+        }
+        
+        DialogReference.Close(DialogResult.Ok(Model));
+    }
+
+    private void HandleCancel()
+    {
+        DialogReference.Close(DialogResult.Cancel());
+    }
+}
