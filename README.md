@@ -70,7 +70,7 @@ dotnet restore
 dotnet run --project StepCue.TenantApp.Web
 ```
 
-**Note**: Requires .NET 9.0 SDK or later installed on your system.
+**Note**: Requires .NET 8.0 SDK or later installed on your system.
 
 ## Docker Hub
 
@@ -91,12 +91,18 @@ Images are tagged with:
 ### Project Structure
 - `StepCue.TenantApp.Web` - Main Blazor Server application containing:
   - Blazor components and pages for the user interface
-  - Services for business logic (PlanService, ExecutionService, FileService)
+  - Web-specific services (FileService)
   - Program.cs with application configuration
+- `StepCue.TenantApp.Core` - Business logic layer containing:
+  - Core services for business logic (PlanService, ExecutionService)
+  - Application-specific logic and workflows
 - `StepCue.TenantApp.Data` - Data layer containing:
   - Entity Framework Core models for Plans, Executions, Steps, and Members
   - DataContext for database operations
   - Support for in-memory database for development and testing
+- `StepCue.TenantApp.Core.Tests` - Unit tests for the Core layer:
+  - Comprehensive test coverage for business logic
+  - Tests for PlanService and ExecutionService functionality
 
 ### Key Features
 - **Plan Management**: Create, edit, and organize multi-step plans
