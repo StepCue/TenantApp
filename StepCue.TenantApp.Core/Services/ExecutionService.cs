@@ -117,6 +117,16 @@ namespace StepCue.TenantApp.Core.Services
             return step;
         }
 
+        public async Task<ExecutionStep> GetExecutionStepAsync(int stepId)
+        {
+            return await _context.ExecutionSteps
+                .Include(s => s.AssignedMembers)
+                .Include(s => s.Messages)
+                .Include(s => s.Approvals)
+                .ThenInclude(a => a.ExecutionMember)
+                .FirstOrDefaultAsync(s => s.Id == stepId);
+        }
+
         public async Task<ExecutionStepMessage> AddMessageToStepAsync(ExecutionStepMessage message)
         {
             _context.ExecutionStepMessages.Add(message);

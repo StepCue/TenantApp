@@ -1,0 +1,118 @@
+@using StepCue.TenantApp.Web.Components.Dialogs.Models
+@using StepCue.TenantApp.Data.Models.Execution
+@using StepCue.TenantApp.Data.Models.Planning
+@using StepCue.TenantApp.Core.Services
+@inject ExecutionService ExecutionService
+@inject ISnackbar Snackbar
+
+<MudDialog Options="@(new DialogOptions() { MaxWidth = MaxWidth.Medium, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h5">Approve Step: @Model.Step?.Name</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (Model.Step != null)
+        {
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        This is a go/nogo step that requires approval from all assigned team members before it can be considered complete.
+                    </MudText>
+                    
+                    <MudTextField @bind-Value="Model.Comments"
+                                Label="Approval Comments" 
+                                Lines="3" 
+                                Class="mb-3"
+                                Required="true"
+                                HelperText="Please provide comments for your approval decision" />
+                            
+                    @if (Model.Step.AssignedMembers != null && Model.Step.AssignedMembers.Any())
+                    {
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Select your role for this approval:</MudText>
+                        <MudSelect T="PlanMember" Value="Model.SelectedApprover" 
+                                   Label="Approving as" 
+                                   Variant="Variant.Outlined" 
+                                   Required="true"
+                                   ToStringFunc="@(m => string.IsNullOrEmpty(m?.Name) ? "Unnamed Member" : m.Name)"
+                                   ValueChanged="OnApproverChanged">
+                            @foreach (var member in Model.Step.AssignedMembers)
+                            {
+                                var memberName = string.IsNullOrEmpty(member.Name) ? "Unnamed Member" : member.Name;
+                                <MudSelectItem T="PlanMember" Value="@member">@memberName</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                </MudItem>
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="HandleCancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" 
+                 Color="Color.Warning" 
+                 OnClick="HandleApprove"
+                 Disabled="@(Model.SelectedApprover == null || string.IsNullOrWhiteSpace(Model.Comments))">
+            Approve
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    IDialogReference DialogReference { get; set; } = default!;
+
+    [Parameter] 
+    public StepApprovalDialogModel Model { get; set; } = new();
+
+    private void OnApproverChanged(PlanMember selectedApprover)
+    {
+        Model.SelectedApprover = selectedApprover;
+    }
+
+    private async Task HandleApprove()
+    {
+        if (Model.Step != null && Model.SelectedApprover != null)
+        {
+            // Find the corresponding ExecutionMember based on name and email
+            var executionMember = Model.Step.Execution.Members.FirstOrDefault(em => 
+                em.Name == Model.SelectedApprover.Name && em.EmailAddress == Model.SelectedApprover.EmailAddress);
+                
+            if (executionMember != null)
+            {
+                // Find or create the approval record for this member
+                var existingApproval = Model.Step.Approvals.FirstOrDefault(a => a.ExecutionMemberId == executionMember.Id);
+                
+                if (existingApproval != null)
+                {
+                    // Update existing approval
+                    existingApproval.IsApproved = true;
+                    existingApproval.Comments = Model.Comments;
+                    existingApproval.ApprovalDate = DateTime.Now;
+                    await ExecutionService.UpdateStepApprovalAsync(existingApproval);
+                }
+                else
+                {
+                    // Create new approval
+                    var approval = new ExecutionStepApproval
+                    {
+                        ExecutionStepId = Model.Step.Id,
+                        ExecutionMemberId = executionMember.Id,
+                        IsApproved = true,
+                        Comments = Model.Comments,
+                        ApprovalDate = DateTime.Now
+                    };
+                    
+                    await ExecutionService.AddApprovalToStepAsync(approval);
+                }
+                
+                Snackbar.Add($"Step approved by {Model.SelectedApprover.Name}", Severity.Success);
+            }
+        }
+        
+        DialogReference.Close(DialogResult.Ok(Model));
+    }
+
+    private void HandleCancel()
+    {
+        DialogReference.Close(DialogResult.Cancel());
+    }
+}

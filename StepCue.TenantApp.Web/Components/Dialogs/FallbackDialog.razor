@@ -1,0 +1,157 @@
+@using StepCue.TenantApp.Web.Components.Dialogs.Models
+@using StepCue.TenantApp.Data.Models.Execution
+@using StepCue.TenantApp.Data.Models.Planning
+@using StepCue.TenantApp.Core.Services
+@inject ExecutionService ExecutionService
+@inject ISnackbar Snackbar
+
+<MudDialog Options="@(new DialogOptions() { MaxWidth = MaxWidth.Large, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h5">Fallback Step</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (Model.Step != null)
+        {
+            <MudText Typo="Typo.h6" Class="mb-4">
+                Requesting fallback from: @Model.Step.Name
+            </MudText>
+
+            @if (Model.AvailableFallbackOptions.Any())
+            {
+                @if (Model.AvailableFallbackOptions.Count > 1)
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Select which step to fallback to:</MudText>
+                    <MudSelect T="int?" Value="Model.SelectedFallbackStepOrder" 
+                               Label="Fallback to step" 
+                               Variant="Variant.Outlined" 
+                               Class="mb-4"
+                               ValueChanged="OnFallbackStepSelectionChanged">
+                        @foreach (var option in Model.AvailableFallbackOptions.OrderByDescending(kvp => kvp.Key))
+                        {
+                            var stepName = ExecutionSteps?.FirstOrDefault(s => s.Order == option.Key)?.Name ?? $"Step {option.Key}";
+                            <MudSelectItem T="int?" Value="option.Key">@stepName (Step @option.Key)</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+
+                @if (Model.CurrentFallbackSteps.Any())
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Fallback Steps that will be executed:</MudText>
+                    <MudList T="string" Dense="true" Class="mb-4">
+                        @foreach (var fallbackStep in Model.CurrentFallbackSteps.OrderBy(s => s.Order))
+                        {
+                            <MudListItem T="string" Class="d-flex align-center">
+                                <MudIcon Icon="@Icons.Material.Filled.ArrowRight" Size="Size.Small" Class="mr-2" />
+                                <div>
+                                    <MudText Typo="Typo.body1">@fallbackStep.Name</MudText>
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                        Assigned to: @string.Join(", ", fallbackStep.AssignedMembers.Select(m => m.Name))
+                                    </MudText>
+                                </div>
+                            </MudListItem>
+                        }
+                    </MudList>
+
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Reason for Fallback (Required):</MudText>
+                    <MudTextField @bind-Value="Model.Reason" 
+                                 Label="Fallback Reason" 
+                                 Lines="3" 
+                                 Required="true"
+                                 Class="mb-4"
+                                 Placeholder="Explain why fallback is necessary..." />
+
+                    <MudAlert Severity="Severity.Warning" Class="mb-3">
+                        This action will:
+                        <ul>
+                            <li>Create an approval step requiring approval from all affected team members</li>
+                            <li>If approved, insert the fallback steps and cancel remaining steps</li>
+                            <li>If denied, continue with normal execution</li>
+                        </ul>
+                    </MudAlert>
+                }
+                else if (Model.AvailableFallbackOptions.Count > 1)
+                {
+                    <MudAlert Severity="Severity.Info" Class="mb-4">
+                        Please select a step to see the fallback options.
+                    </MudAlert>
+                }
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-4">
+                    No fallback steps are available from previous steps.
+                </MudAlert>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="HandleCancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" 
+                 Color="Color.Warning" 
+                 OnClick="HandleSubmitFallback"
+                 Disabled="@(string.IsNullOrWhiteSpace(Model.Reason) || !Model.CurrentFallbackSteps.Any() || !Model.SelectedFallbackStepOrder.HasValue)">
+            Request Fallback Approval
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    IDialogReference DialogReference { get; set; } = default!;
+
+    [Parameter] 
+    public FallbackDialogModel Model { get; set; } = new();
+
+    [Parameter]
+    public List<ExecutionStep>? ExecutionSteps { get; set; }
+
+    private void OnFallbackStepSelectionChanged(int? selectedOrder)
+    {
+        Model.SelectedFallbackStepOrder = selectedOrder;
+        
+        if (selectedOrder.HasValue && Model.AvailableFallbackOptions.ContainsKey(selectedOrder.Value))
+        {
+            Model.CurrentFallbackSteps = Model.AvailableFallbackOptions[selectedOrder.Value];
+        }
+        else
+        {
+            Model.CurrentFallbackSteps.Clear();
+        }
+    }
+
+    private async Task HandleSubmitFallback()
+    {
+        if (Model.Step != null && Model.SelectedFallbackStepOrder.HasValue && !string.IsNullOrWhiteSpace(Model.Reason))
+        {
+            try
+            {
+                // Find the execution step that corresponds to the selected fallback step order
+                var targetStep = ExecutionSteps?.FirstOrDefault(s => s.Order == Model.SelectedFallbackStepOrder.Value);
+                if (targetStep == null)
+                {
+                    Snackbar.Add("Target step not found", Severity.Error);
+                    return;
+                }
+                
+                // Create fallback approval step using the target step (that has the fallback definitions)
+                var approvalStep = await ExecutionService.CreateFallbackApprovalStepAsync(
+                    Model.Step.ExecutionId, 
+                    targetStep.Id, 
+                    Model.Reason);
+                    
+                Snackbar.Add($"Fallback approval step created for step '{targetStep.Name}'. Waiting for team approval.", Severity.Info);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error creating fallback approval: {ex.Message}", Severity.Error);
+            }
+        }
+        
+        DialogReference.Close(DialogResult.Ok(Model));
+    }
+
+    private void HandleCancel()
+    {
+        DialogReference.Close(DialogResult.Cancel());
+    }
+}

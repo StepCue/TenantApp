@@ -266,22 +266,7 @@
     }
 </MudContainer>
 
-<!-- Step Details Dialog -->
-<MudDialog @bind-Visible="_stepDetailsDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Large, FullWidth = true })">
-    <TitleContent>
-        <MudText Typo="Typo.h5">Step Details</MudText>
-    </TitleContent>
-    <DialogContent>
-        @if (_selectedStep != null)
-        {
-            <StepEditorPopup Step="_selectedStep" 
-                            PlanMembers="_plan.Members" 
-                            PlanSteps="_plan.Steps" 
-                            OnSave="@SaveStepDetails" 
-                            OnCancel="@CloseStepDetailsDialog" />
-        }
-    </DialogContent>
-</MudDialog>
+
 
 
 
@@ -303,8 +288,6 @@
     private bool _showActionsColumn = true;
     
     private List<PlanStep> _orderedSteps => _plan.Steps;
-    private bool _stepDetailsDialogVisible = false;
-    private PlanStep? _selectedStep;
 
     protected override async Task OnInitializedAsync()
     {
@@ -446,22 +429,27 @@
         }
     }
 
-    private void OpenStepDetailsDialog(PlanStep step)
+    private async Task OpenStepDetailsDialog(PlanStep step)
     {
-        _selectedStep = step;
-        _stepDetailsDialogVisible = true;
-    }
-
-    private void CloseStepDetailsDialog()
-    {
-        _stepDetailsDialogVisible = false;
-        _selectedStep = null;
-    }
-
-    private async Task SaveStepDetails()
-    {
-        // The step is already updated by binding, just close the dialog
-        CloseStepDetailsDialog();
-        StateHasChanged();
+        var model = new PlanStepDetailsDialogModel
+        {
+            Step = step,
+            PlanMembers = _plan.Members,
+            PlanSteps = _plan.Steps
+        };
+        
+        var parameters = new DialogParameters<PlanStepDetailsDialog>
+        {
+            { x => x.Model, model }
+        };
+        
+        var dialog = await DialogService.ShowAsync<PlanStepDetailsDialog>("Step Details", parameters);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled)
+        {
+            // The step is already updated by binding, just refresh the UI
+            StateHasChanged();
+        }
     }
 }
