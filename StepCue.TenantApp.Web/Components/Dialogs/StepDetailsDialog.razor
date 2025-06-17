@@ -1,0 +1,134 @@
+@using StepCue.TenantApp.Web.Components.Dialogs.Models
+@using StepCue.TenantApp.Data.Models.Execution
+@using StepCue.TenantApp.Core.Services
+@inject ExecutionService ExecutionService
+
+<MudDialog Options="@(new DialogOptions() { MaxWidth = MaxWidth.Large, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h5">@Model.Step?.Name</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (Model.Step != null)
+        {
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudCard Elevation="1" Class="mb-4">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Plan Details</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudText>@Model.Step.Summary</MudText>
+                            
+                            @if (Model.Step.AssignedMembers != null && Model.Step.AssignedMembers.Any())
+                            {
+                                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2">Assigned Members:</MudText>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var member in Model.Step.AssignedMembers)
+                                    {
+                                        <MudChip T="string" Color="Color.Secondary" Size="Size.Small">@member.Name</MudChip>
+                                    }
+                                </div>
+                            }
+                        </MudCardContent>
+                    </MudCard>
+                    
+                    @if (!Model.IsCompleted)
+                    {
+                        <MudCard Elevation="1">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">Update Status</MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                @if (!Model.Step.StartedOn.HasValue)
+                                {
+                                    <MudButton Variant="Variant.Filled" 
+                                             Color="Color.Primary" 
+                                             FullWidth="true"
+                                             Disabled="@(!Model.CanStart)"
+                                             OnClick="@HandleStartStep">
+                                        @(Model.CanStart ? "Start Step" : "Complete previous steps first")
+                                    </MudButton>
+                                }
+                                else
+                                {
+                                    <MudTextField @bind-Value="Model.Step.ResultSummary"
+                                                Label="Result Summary" 
+                                                Lines="3" 
+                                                Class="mb-3" />
+                                    
+                                    <MudText Class="mb-2">Upload Result Screenshot</MudText>
+                                    <ScreenshotUploader @bind-ImageData="Model.Step.ResultScreenshot" />
+                                    
+                                    <MudButton Variant="Variant.Filled" 
+                                             Color="Color.Success" 
+                                             FullWidth="true"
+                                             OnClick="@HandleCompleteStep"
+                                             Class="mt-3">
+                                        Mark as Complete
+                                    </MudButton>
+                                }
+                            </MudCardContent>
+                        </MudCard>
+                    }
+                    else
+                    {
+                        <MudCard Elevation="1">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">Result</MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                <MudText>@Model.Step.ResultSummary</MudText>
+                            </MudCardContent>
+                        </MudCard>
+                    }
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <StepDiscussion Step="@Model.Step" />
+                </MudItem>
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="HandleClose">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    IDialogReference DialogReference { get; set; } = default!;
+
+    [Parameter] 
+    public StepDetailsDialogModel Model { get; set; } = new();
+
+    private async Task HandleStartStep()
+    {
+        if (Model.Step != null)
+        {
+            Model.Step.StartedOn = DateTime.Now;
+            await ExecutionService.UpdateExecutionStepAsync(Model.Step);
+            Model.Step = await ExecutionService.GetExecutionStepAsync(Model.Step.Id);
+        }
+    }
+
+    private async Task HandleCompleteStep()
+    {
+        if (Model.Step != null)
+        {
+            Model.Step.CompleteOn = DateTime.Now;
+            await ExecutionService.UpdateExecutionStepAsync(Model.Step);
+            Model.Step = await ExecutionService.GetExecutionStepAsync(Model.Step.Id);
+            Model.IsCompleted = true;
+        }
+    }
+
+    private void HandleClose()
+    {
+        DialogReference.Close(DialogResult.Ok(Model));
+    }
+}

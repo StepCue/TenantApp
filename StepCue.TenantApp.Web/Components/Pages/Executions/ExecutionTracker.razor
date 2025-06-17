@@ -7,6 +7,7 @@
 @inject ExecutionService ExecutionService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @rendermode InteractiveServer
 
 <style>
@@ -348,120 +349,7 @@
     }
 </MudContainer>
 
-<!-- Step Details Dialog -->
-<MudDialog @bind-Visible="_stepDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Large, FullWidth = true })">
-    <TitleContent>
-        <MudText Typo="Typo.h5">@_dialogStep?.Name</MudText>
-    </TitleContent>
-    <DialogContent>
-        @if (_dialogStep != null)
-        {
-            <MudGrid>
-                <MudItem xs="12" md="6">
-                    <MudCard Elevation="1" Class="mb-4">
-                        <MudCardHeader>
-                            <CardHeaderContent>
-                                <MudText Typo="Typo.h6">Plan Details</MudText>
-                            </CardHeaderContent>
-                        </MudCardHeader>
-                        <MudCardContent>
-                            <MudText>@_dialogStep.Summary</MudText>
-                            
-                            @if (_dialogStep.AssignedMembers != null && _dialogStep.AssignedMembers.Any())
-                            {
-                                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2">Assigned Members:</MudText>
-                                <div class="d-flex flex-wrap gap-1">
-                                    @foreach (var member in _dialogStep.AssignedMembers)
-                                    {
-                                        <MudChip T="string" Color="Color.Secondary" Size="Size.Small">@member.Name</MudChip>
-                                    }
-                                </div>
-                            }
-                            
-                            @if (_dialogStep.Screenshot != null && _dialogStep.Screenshot.Length > 0)
-                            {
-                   @*              <MudImage Src="@_fileService.GetImageDataUrl(_dialogStep.Screenshot)" 
-                                        Alt="Plan screenshot" 
-                                        Class="mt-4"
-                                        Width="100%" 
-                                        ObjectFit="ObjectFit.Cover" /> *@
-                            }
-                        </MudCardContent>
-                    </MudCard>
-                    
-                    @if (!_dialogStep.CompleteOn.HasValue)
-                    {
-                        <MudCard Elevation="1">
-                            <MudCardHeader>
-                                <CardHeaderContent>
-                                    <MudText Typo="Typo.h6">Update Status</MudText>
-                                </CardHeaderContent>
-                            </MudCardHeader>
-                            <MudCardContent>
-                                @if (!_dialogStep.StartedOn.HasValue)
-                                {
-                                    <MudButton Variant="Variant.Filled" 
-                                             Color="Color.Primary" 
-                                             FullWidth="true"
-                                             Disabled="@(!CanStartStep(_dialogStep))"
-                                             OnClick="@StartDialogStep">
-                                        @(CanStartStep(_dialogStep) ? "Start Step" : "Complete previous steps first")
-                                    </MudButton>
-                                }
-                                else
-                                {
-                                    <MudTextField @bind-Value="_dialogStep.ResultSummary"
-                                                Label="Result Summary" 
-                                                Lines="3" 
-                                                Class="mb-3" />
-                                    
-                                    <MudText Class="mb-2">Upload Result Screenshot</MudText>
-                                    <ScreenshotUploader @bind-ImageData="_dialogStep.ResultScreenshot" />
-                                    
-                                    <MudButton Variant="Variant.Filled" 
-                                             Color="Color.Success" 
-                                             FullWidth="true"
-                                             OnClick="@CompleteDialogStep"
-                                             Class="mt-3">
-                                        Mark as Complete
-                                    </MudButton>
-                                }
-                            </MudCardContent>
-                        </MudCard>
-                    }
-                    else
-                    {
-                        <MudCard Elevation="1">
-                            <MudCardHeader>
-                                <CardHeaderContent>
-                                    <MudText Typo="Typo.h6">Result</MudText>
-                                </CardHeaderContent>
-                            </MudCardHeader>
-                            <MudCardContent>
-                                <MudText>@_dialogStep.ResultSummary</MudText>
-                                
-                                @if (_dialogStep.ResultScreenshot != null && _dialogStep.ResultScreenshot.Length > 0)
-                                {
-                              @*       <MudImage Src="@_fileService.GetImageDataUrl(_dialogStep.ResultScreenshot)" 
-                                            Alt="Result screenshot" 
-                                            Class="mt-4"
-                                            Width="100%" 
-                                            ObjectFit="ObjectFit.Cover" /> *@
-                                }
-                            </MudCardContent>
-                        </MudCard>
-                    }
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <StepDiscussion Step="@_dialogStep" />
-                </MudItem>
-            </MudGrid>
-        }
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="CloseStepDialog">Close</MudButton>
-    </DialogActions>
-</MudDialog>
+
 
 <!-- Step Completion Dialog -->
 <MudDialog @bind-Visible="_completionDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Medium, FullWidth = true })">
@@ -665,8 +553,6 @@
     private Execution _execution;
     private ExecutionStep _selectedStep;
     private ExecutionMember? _selectedMemberToHighlight;
-    private bool _stepDialogVisible = false;
-    private ExecutionStep _dialogStep;
     
     // Completion dialog fields
     private bool _completionDialogVisible = false;
@@ -742,15 +628,29 @@
         _selectedStep = step;
     }
     
-    private void OpenStepDialog(ExecutionStep step)
+    private async Task OpenStepDialog(ExecutionStep step)
     {
-        _dialogStep = step;
-        _stepDialogVisible = true;
-    }
-    
-    private void CloseStepDialog()
-    {
-        _stepDialogVisible = false;
+        var model = new StepDetailsDialogModel
+        {
+            Step = step,
+            CanStart = CanStartStep(step),
+            IsCompleted = ExecutionService.IsStepComplete(step)
+        };
+        
+        var parameters = new DialogParameters<StepDetailsDialog>
+        {
+            { x => x.Model, model }
+        };
+        
+        var dialog = await DialogService.ShowAsync<StepDetailsDialog>(step.Name ?? "Step Details", parameters);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled && result.Data is StepDetailsDialogModel resultModel)
+        {
+            // Refresh the execution data to get latest updates
+            _execution = await ExecutionService.GetExecutionAsync(_execution.Id);
+            StateHasChanged();
+        }
     }
     
     private string GetTimeSinceStarted(ExecutionStep step)
@@ -782,11 +682,6 @@
         await StartStepInternal(_selectedStep);
     }
     
-    private async Task StartDialogStep()
-    {
-        await StartStepInternal(_dialogStep);
-    }
-    
     private async Task StartStepInternal(ExecutionStep step)
     {
         if (!CanStartStep(step))
@@ -803,11 +698,6 @@
     private async Task CompleteStep()
     {
         await CompleteStepInternal(_selectedStep);
-    }
-    
-    private async Task CompleteDialogStep()
-    {
-        await CompleteStepInternal(_dialogStep);
     }
     
     private async Task CompleteStepInternal(ExecutionStep step)
