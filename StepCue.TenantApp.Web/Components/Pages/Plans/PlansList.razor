@@ -13,7 +13,7 @@
     <MudText Typo="Typo.h4" Class="mb-4">Plans</MudText>
     
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" 
-               OnClick="@(() => NavigationManager.NavigateTo("/plans/new"))">
+               OnClick="@CreateNewPlan">
         Create New Plan
     </MudButton>
     
@@ -68,6 +68,12 @@
     protected override async Task OnInitializedAsync()
     {
         _plans = await PlanService.GetPlansAsync();
+    }
+
+    private async Task CreateNewPlan()
+    {
+        var newPlan = await PlanService.CreateNewPlanAsync();
+        NavigationManager.NavigateTo($"/plans/{newPlan.Id}");
     }
 
     private async Task ExecutePlan(int planId)

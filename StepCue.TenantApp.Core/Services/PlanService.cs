@@ -39,6 +39,18 @@ namespace StepCue.TenantApp.Core.Services
             return plan;
         }
 
+        public async Task<Plan> CreateNewPlanAsync()
+        {
+            var plan = new Plan
+            {
+                Name = "New Plan"
+            };
+            
+            _context.Plans.Add(plan);
+            await _context.SaveChangesAsync();
+            return plan;
+        }
+
         public async Task<Plan> UpdatePlanAsync(Plan plan)
         {
             // Load the existing plan from database to get proper tracking
