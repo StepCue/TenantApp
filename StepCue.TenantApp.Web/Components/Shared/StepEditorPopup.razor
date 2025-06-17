@@ -164,7 +164,7 @@
             Name = $"Fallback Step {Step.FallbackSteps.Count + 1}",
             Summary = "",
             Order = Step.FallbackSteps.Count + 1,
-            AssignedMembers = new List<PlanMember>()
+            AssignedMembers = Step.AssignedMembers.ToList()
         };
         Step.FallbackSteps.Add(newFallback);
     }
