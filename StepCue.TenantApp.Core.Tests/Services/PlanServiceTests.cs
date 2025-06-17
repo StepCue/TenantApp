@@ -80,6 +80,34 @@ namespace StepCue.TenantApp.Core.Tests.Services
         }
 
         [Fact]
+        public async Task CreateNewPlanAsync_ShouldCreatePlanWithCustomName()
+        {
+            // Arrange
+            var customName = "My Custom Plan";
+
+            // Act
+            var result = await _planService.CreateNewPlanAsync(customName);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.True(result.Id > 0);
+            Assert.Equal(customName, result.Name);
+            Assert.Empty(result.Steps);
+            Assert.Empty(result.Members);
+
+            // Verify in database
+            var savedPlan = await Context.Plans
+                .Include(p => p.Steps)
+                .Include(p => p.Members)
+                .FirstOrDefaultAsync(p => p.Id == result.Id);
+
+            Assert.NotNull(savedPlan);
+            Assert.Equal(customName, savedPlan.Name);
+            Assert.Empty(savedPlan.Steps);
+            Assert.Empty(savedPlan.Members);
+        }
+
+        [Fact]
         public async Task GetPlansAsync_ShouldReturnPlansWithStepsAndMembers()
         {
             // Arrange

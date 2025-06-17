@@ -340,10 +340,34 @@
 
     private void SortStepsCollection()
     {
-        // Sort the collection in-place by Order
+        // Sort the collection without breaking Entity Framework tracking
+        // Instead of clearing and re-adding, reorder the existing collection in place
         var sortedSteps = _plan.Steps.OrderBy(s => s.Order).ToList();
-        _plan.Steps.Clear();
-        _plan.Steps.AddRange(sortedSteps);
+        
+        // Only rearrange if needed
+        bool needsReordering = false;
+        for (int i = 0; i < _plan.Steps.Count; i++)
+        {
+            if (_plan.Steps[i] != sortedSteps[i])
+            {
+                needsReordering = true;
+                break;
+            }
+        }
+        
+        if (needsReordering)
+        {
+            // Move items to correct positions without clearing the collection
+            for (int i = 0; i < sortedSteps.Count; i++)
+            {
+                var currentIndex = _plan.Steps.IndexOf(sortedSteps[i]);
+                if (currentIndex != i)
+                {
+                    _plan.Steps.RemoveAt(currentIndex);
+                    _plan.Steps.Insert(i, sortedSteps[i]);
+                }
+            }
+        }
     }
 
     private void AddStep()

@@ -39,11 +39,11 @@ namespace StepCue.TenantApp.Core.Services
             return plan;
         }
 
-        public async Task<Plan> CreateNewPlanAsync()
+        public async Task<Plan> CreateNewPlanAsync(string name = "New Plan")
         {
             var plan = new Plan
             {
-                Name = "New Plan"
+                Name = name
             };
             
             _context.Plans.Add(plan);
@@ -68,60 +68,76 @@ namespace StepCue.TenantApp.Core.Services
             // Update plan properties
             existingPlan.Name = plan.Name;
 
-            // Handle steps - collect new ones and update existing ones
-            var newSteps = plan.Steps.Where(s => s.Id == 0).ToList();
-            var existingSteps = plan.Steps.Where(s => s.Id > 0).ToList();
-
-            // Add new steps
-            foreach (var step in newSteps)
+            // Handle steps - use a cleaner approach to avoid duplicates
+            
+            // First, remove steps that are no longer in the updated plan
+            var incomingStepIds = plan.Steps.Where(s => s.Id > 0).Select(s => s.Id).ToHashSet();
+            var stepsToRemove = existingPlan.Steps.Where(s => !incomingStepIds.Contains(s.Id)).ToList();
+            foreach (var stepToRemove in stepsToRemove)
             {
-                existingPlan.Steps.Add(step);
+                existingPlan.Steps.Remove(stepToRemove);
             }
 
-            // Update existing steps
-            foreach (var step in existingSteps)
+            // Process each step from the incoming plan
+            foreach (var incomingStep in plan.Steps)
             {
-                var existingStep = existingPlan.Steps.FirstOrDefault(s => s.Id == step.Id);
-                if (existingStep != null)
+                if (incomingStep.Id == 0)
                 {
-                    existingStep.Name = step.Name;
-                    existingStep.Order = step.Order;
-                    existingStep.Summary = step.Summary;
-                    existingStep.Screenshot = step.Screenshot;
-                    existingStep.StepType = step.StepType;
-                    
-                    // Handle AssignedMembers relationship properly
-                    existingStep.AssignedMembers.Clear();
-                    foreach (var assignedMember in step.AssignedMembers)
+                    // New step - add it
+                    existingPlan.Steps.Add(incomingStep);
+                }
+                else
+                {
+                    // Existing step - update it
+                    var existingStep = existingPlan.Steps.FirstOrDefault(s => s.Id == incomingStep.Id);
+                    if (existingStep != null)
                     {
-                        // Find the existing member in the plan's members to ensure proper tracking
-                        var existingMember = existingPlan.Members.FirstOrDefault(m => m.Id == assignedMember.Id);
-                        if (existingMember != null)
+                        existingStep.Name = incomingStep.Name;
+                        existingStep.Order = incomingStep.Order;
+                        existingStep.Summary = incomingStep.Summary;
+                        existingStep.Screenshot = incomingStep.Screenshot;
+                        existingStep.StepType = incomingStep.StepType;
+                        
+                        // Handle AssignedMembers relationship properly
+                        existingStep.AssignedMembers.Clear();
+                        foreach (var assignedMember in incomingStep.AssignedMembers)
                         {
-                            existingStep.AssignedMembers.Add(existingMember);
+                            // Find the existing member in the plan's members to ensure proper tracking
+                            var existingMember = existingPlan.Members.FirstOrDefault(m => m.Id == assignedMember.Id);
+                            if (existingMember != null)
+                            {
+                                existingStep.AssignedMembers.Add(existingMember);
+                            }
                         }
                     }
                 }
             }
 
-            // Handle members - collect new ones and update existing ones
-            var newMembers = plan.Members.Where(m => m.Id == 0).ToList();
-            var existingMembers = plan.Members.Where(m => m.Id > 0).ToList();
-
-            // Add new members
-            foreach (var member in newMembers)
+            // Handle members - use similar approach
+            var incomingMemberIds = plan.Members.Where(m => m.Id > 0).Select(m => m.Id).ToHashSet();
+            var membersToRemove = existingPlan.Members.Where(m => !incomingMemberIds.Contains(m.Id)).ToList();
+            foreach (var memberToRemove in membersToRemove)
             {
-                existingPlan.Members.Add(member);
+                existingPlan.Members.Remove(memberToRemove);
             }
 
-            // Update existing members
-            foreach (var member in existingMembers)
+            // Process each member from the incoming plan
+            foreach (var incomingMember in plan.Members)
             {
-                var existingMember = existingPlan.Members.FirstOrDefault(m => m.Id == member.Id);
-                if (existingMember != null)
+                if (incomingMember.Id == 0)
                 {
-                    existingMember.Name = member.Name;
-                    existingMember.EmailAddress = member.EmailAddress;
+                    // New member - add it
+                    existingPlan.Members.Add(incomingMember);
+                }
+                else
+                {
+                    // Existing member - update it
+                    var existingMember = existingPlan.Members.FirstOrDefault(m => m.Id == incomingMember.Id);
+                    if (existingMember != null)
+                    {
+                        existingMember.Name = incomingMember.Name;
+                        existingMember.EmailAddress = incomingMember.EmailAddress;
+                    }
                 }
             }
 

@@ -64,16 +64,43 @@
 
 @code {
     private List<Plan> _plans;
+    private bool _createPlanDialogVisible = false;
+    private string _newPlanName = "";
 
     protected override async Task OnInitializedAsync()
     {
         _plans = await PlanService.GetPlansAsync();
     }
 
-    private async Task CreateNewPlan()
+    private void CreateNewPlan()
     {
-        var newPlan = await PlanService.CreateNewPlanAsync();
-        NavigationManager.NavigateTo($"/plans/{newPlan.Id}");
+        _newPlanName = "";
+        _createPlanDialogVisible = true;
+    }
+
+    private void CancelCreatePlan()
+    {
+        _createPlanDialogVisible = false;
+        _newPlanName = "";
+    }
+
+    private async Task ConfirmCreatePlan()
+    {
+        if (!string.IsNullOrWhiteSpace(_newPlanName))
+        {
+            var newPlan = await PlanService.CreateNewPlanAsync(_newPlanName.Trim());
+            _createPlanDialogVisible = false;
+            _newPlanName = "";
+            NavigationManager.NavigateTo($"/plans/{newPlan.Id}");
+        }
+    }
+
+    private async Task OnPlanNameKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newPlanName))
+        {
+            await ConfirmCreatePlan();
+        }
     }
 
     private async Task ExecutePlan(int planId)
@@ -104,3 +131,34 @@
         }
     }
 }
+
+<!-- Plan Name Dialog -->
+<MudDialog @bind-Visible="_createPlanDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h5">Create New Plan</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_newPlanName" 
+                     Label="Plan Name" 
+                     Placeholder="Enter plan name..."
+                     Required="true"
+                     RequiredError="Plan name is required"
+                     Variant="Variant.Outlined"
+                     Margin="Margin.Dense"
+                     FullWidth="true"
+                     @onkeypress="OnPlanNameKeyPress" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CancelCreatePlan" 
+                   Variant="Variant.Text" 
+                   Color="Color.Secondary">
+            Cancel
+        </MudButton>
+        <MudButton OnClick="ConfirmCreatePlan" 
+                   Variant="Variant.Filled" 
+                   Color="Color.Primary"
+                   Disabled="@string.IsNullOrWhiteSpace(_newPlanName)">
+            Create Plan
+        </MudButton>
+    </DialogActions>
+</MudDialog>
