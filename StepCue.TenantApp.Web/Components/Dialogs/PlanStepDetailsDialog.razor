@@ -1,0 +1,36 @@
+@using StepCue.TenantApp.Web.Components.Dialogs.Models
+@using StepCue.TenantApp.Data.Models.Planning
+
+<MudDialog Options="@(new DialogOptions() { MaxWidth = MaxWidth.Large, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h5">Step Details</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (Model.Step != null)
+        {
+            <StepEditorPopup Step="Model.Step" 
+                            PlanMembers="Model.PlanMembers" 
+                            PlanSteps="Model.PlanSteps" 
+                            OnSave="@HandleSave" 
+                            OnCancel="@HandleCancel" />
+        }
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    IDialogReference DialogReference { get; set; } = default!;
+
+    [Parameter] 
+    public PlanStepDetailsDialogModel Model { get; set; } = new();
+
+    private void HandleSave()
+    {
+        DialogReference.Close(DialogResult.Ok(Model));
+    }
+
+    private void HandleCancel()
+    {
+        DialogReference.Close(DialogResult.Cancel());
+    }
+}
