@@ -19,6 +19,7 @@ namespace StepCue.TenantApp.Data
         public DbSet<Plan> Plans { get; set; }
         public DbSet<PlanStep> PlanSteps { get; set; }
         public DbSet<PlanMember> PlanMembers { get; set; }
+        public DbSet<Fallback> Fallbacks { get; set; }
         public DbSet<Execution> Executions { get; set; }
         public DbSet<ExecutionStep> ExecutionSteps { get; set; }
         public DbSet<ExecutionMember> ExecutionMembers { get; set; }
@@ -44,6 +45,18 @@ namespace StepCue.TenantApp.Data
             // Configure PlanStep -> AssignedMembers many-to-many relationship
             modelBuilder.Entity<PlanStep>()
                 .HasMany(s => s.AssignedMembers)
+                .WithMany();
+
+            // Configure PlanStep -> Fallbacks one-to-many relationship
+            modelBuilder.Entity<PlanStep>()
+                .HasMany(s => s.FallbackSteps)
+                .WithOne()
+                .HasForeignKey(f => f.PlanStepId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure Fallback -> AssignedMembers many-to-many relationship
+            modelBuilder.Entity<Fallback>()
+                .HasMany(f => f.AssignedMembers)
                 .WithMany();
 
             // Configure Execution -> Steps relationship

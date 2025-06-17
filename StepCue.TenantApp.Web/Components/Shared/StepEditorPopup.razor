@@ -16,6 +16,15 @@
                      Lines="3" 
                      Class="mb-3" />
         
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Step Type</MudText>
+        <MudSelect T="StepType" @bind-Value="Step.StepType" 
+                   Label="Step Type" 
+                   Variant="Variant.Outlined" 
+                   Class="mb-3">
+            <MudSelectItem T="StepType" Value="@StepType.Execution">Execution</MudSelectItem>
+            <MudSelectItem T="StepType" Value="@StepType.GoNoGo">Go/NoGo</MudSelectItem>
+        </MudSelect>
+        
         <MudText Typo="Typo.subtitle2" Class="mb-2">Assigned Members</MudText>
         @if (PlanMembers != null && PlanMembers.Any())
         {
@@ -41,6 +50,74 @@
             </MudAlert>
         }
         
+        <!-- Fallback Steps - inline management for all steps -->
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Fallback Steps</MudText>
+        <MudText Typo="Typo.caption" Class="mb-3">Define steps to execute if this step needs to fall back</MudText>
+        
+        @if (Step.FallbackSteps.Any())
+        {
+            <MudText Typo="Typo.body2" Class="mb-2">Current Fallback Steps:</MudText>
+            @for (int i = 0; i < Step.FallbackSteps.Count; i++)
+            {
+                var index = i; // Capture loop variable
+                var fallback = Step.FallbackSteps[index];
+                <MudCard Class="mb-2" Elevation="1">
+                    <MudCardContent Class="pa-3">
+                        <div class="d-flex justify-space-between align-center">
+                            <div class="flex-grow-1">
+                                <MudTextField @bind-Value="fallback.Name" 
+                                             Label="Fallback Step Name"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             Class="mb-2" />
+                                <MudTextField @bind-Value="fallback.Summary" 
+                                             Label="Summary"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             Lines="2" />
+                                
+                                @if (PlanMembers != null && PlanMembers.Any())
+                                {
+                                    <MudSelect T="PlanMember" 
+                                              MultiSelection="true" 
+                                              SelectedValues="fallback.AssignedMembers" 
+                                              SelectedValuesChanged="@(members => OnFallbackMembersChanged(index, members))"
+                                              Label="Assigned Members" 
+                                              Variant="Variant.Outlined" 
+                                              Margin="Margin.Dense"
+                                              Class="mt-2"
+                                              ToStringFunc="@(m => string.IsNullOrEmpty(m?.Name) ? "Unnamed Member" : m.Name)">
+                                        @foreach (var member in PlanMembers)
+                                        {
+                                            var memberName = string.IsNullOrEmpty(member.Name) ? "Unnamed Member" : member.Name;
+                                            <MudSelectItem T="PlanMember" Value="@member">@memberName</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                }
+                            </div>
+                            <MudIconButton Icon="Icons.Material.Filled.Delete" 
+                                          Color="Color.Error" 
+                                          OnClick="@(() => RemoveFallbackStep(index))"
+                                          Class="ml-2" />
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            }
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-3">
+                No fallback steps defined. Add fallback steps to handle failure scenarios.
+            </MudAlert>
+        }
+        
+        <MudButton Variant="Variant.Outlined" 
+                   StartIcon="Icons.Material.Filled.Add" 
+                   OnClick="AddFallbackStep"
+                   Class="mb-3">
+            Add Fallback Step
+        </MudButton>
+        
         <MudText Typo="Typo.subtitle2" Class="mb-2">Screenshot</MudText>
         <ScreenshotUploader @bind-ImageData="Step.Screenshot" />
         
@@ -58,6 +135,9 @@
     [Parameter] 
     public List<PlanMember> PlanMembers { get; set; } = new();
     
+    [Parameter] 
+    public List<PlanStep> PlanSteps { get; set; } = new();
+    
     [Parameter]
     public EventCallback OnSave { get; set; }
     
@@ -67,6 +147,40 @@
     private void OnAssignedMembersChanged(IEnumerable<PlanMember> selectedMembers)
     {
         Step.AssignedMembers = selectedMembers.ToList();
+    }
+
+    private void OnFallbackMembersChanged(int fallbackIndex, IEnumerable<PlanMember> selectedMembers)
+    {
+        if (fallbackIndex >= 0 && fallbackIndex < Step.FallbackSteps.Count)
+        {
+            Step.FallbackSteps[fallbackIndex].AssignedMembers = selectedMembers.ToList();
+        }
+    }
+
+    private void AddFallbackStep()
+    {
+        var newFallback = new Fallback
+        {
+            Name = $"Fallback Step {Step.FallbackSteps.Count + 1}",
+            Summary = "",
+            Order = Step.FallbackSteps.Count + 1,
+            AssignedMembers = Step.AssignedMembers.ToList()
+        };
+        Step.FallbackSteps.Add(newFallback);
+    }
+
+    private void RemoveFallbackStep(int index)
+    {
+        if (index >= 0 && index < Step.FallbackSteps.Count)
+        {
+            Step.FallbackSteps.RemoveAt(index);
+            
+            // Reorder remaining fallback steps
+            for (int i = 0; i < Step.FallbackSteps.Count; i++)
+            {
+                Step.FallbackSteps[i].Order = i + 1;
+            }
+        }
     }
 
     private async Task Save()
