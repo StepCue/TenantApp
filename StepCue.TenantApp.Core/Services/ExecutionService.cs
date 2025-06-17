@@ -71,7 +71,8 @@ namespace StepCue.TenantApp.Core.Services
                     Summary = step.Summary,
                     Screenshot = step.Screenshot,
                     Order = step.Order,
-                    StepType = step.StepType
+                    StepType = step.StepType,
+                    PlanStepOrder = step.Order // Track original plan step order
                 };
 
                 // Copy assigned members as ExecutionMembers
@@ -187,8 +188,9 @@ namespace StepCue.TenantApp.Core.Services
             if (plan == null)
                 throw new ArgumentException("Plan not found");
 
-            // Find the corresponding plan step
-            var planStep = plan.Steps.FirstOrDefault(ps => ps.Order == originalStep.Order);
+            // Find the corresponding plan step using the original plan step order
+            var planStepOrder = originalStep.PlanStepOrder ?? originalStep.Order;
+            var planStep = plan.Steps.FirstOrDefault(ps => ps.Order == planStepOrder);
 
             if (planStep == null || !planStep.FallbackSteps.Any())
                 throw new ArgumentException("No fallback steps defined for this step");
@@ -196,13 +198,38 @@ namespace StepCue.TenantApp.Core.Services
             // Get all affected members from the fallback definitions
             var affectedMembers = planStep.FallbackSteps.SelectMany(f => f.AssignedMembers).Distinct().ToList();
 
+            // Find the current step (first incomplete step that can be started)
+            var currentStep = execution.Steps
+                .Where(s => !IsStepComplete(s) && CanStartStep(s, execution))
+                .OrderBy(s => s.Order)
+                .FirstOrDefault();
+
+            // Determine the order for the approval step - insert it before the current step
+            int approvalStepOrder;
+            if (currentStep != null)
+            {
+                approvalStepOrder = currentStep.Order;
+                // Increment order of current step and all subsequent steps
+                foreach (var step in execution.Steps.Where(s => s.Order >= currentStep.Order).OrderByDescending(s => s.Order))
+                {
+                    step.Order++;
+                }
+                // Save the order changes for existing steps first
+                await _context.SaveChangesAsync();
+            }
+            else
+            {
+                // No current step found, add at the end
+                approvalStepOrder = GetNextOrderValue(execution);
+            }
+
             // Create fallback approval step (using GoNoGo type since Fallback type no longer exists)
             var approvalStep = new ExecutionStep
             {
                 Name = $"Fallback Approval for {originalStep.Name}",
                 Summary = $"Approval required for falling back from step '{originalStep.Name}'. Reason: {reason}",
                 StepType = StepType.GoNoGo, // Changed from Fallback to GoNoGo
-                Order = GetNextOrderValue(execution),
+                Order = approvalStepOrder,
                 ExecutionId = executionId,
                 FallbackOriginStepId = originalStepId,
                 FallbackReason = reason
@@ -267,8 +294,9 @@ namespace StepCue.TenantApp.Core.Services
             if (plan == null)
                 throw new ArgumentException("Plan not found");
 
-            // Find the corresponding plan step
-            var planStep = plan.Steps.FirstOrDefault(ps => ps.Order == originalStep.Order);
+            // Find the corresponding plan step using the original plan step order
+            var planStepOrder = originalStep.PlanStepOrder ?? originalStep.Order;
+            var planStep = plan.Steps.FirstOrDefault(ps => ps.Order == planStepOrder);
 
             if (planStep == null || !planStep.FallbackSteps.Any())
                 throw new ArgumentException("No fallback definitions found for this step");
@@ -352,6 +380,20 @@ namespace StepCue.TenantApp.Core.Services
 
             var planStep = execution.Plan.Steps.FirstOrDefault(ps => ps.Order == stepOrder);
             return planStep?.FallbackSteps ?? new List<Fallback>();
+        }
+
+        private bool CanStartStep(ExecutionStep step, Execution execution)
+        {
+            // Check if all steps with lower order numbers are completed
+            var stepsBeforeThisOne = execution.Steps
+                .Where(s => s.Order < step.Order)
+                .ToList();
+                
+            // If there are no steps before this one, it can always be started
+            if (!stepsBeforeThisOne.Any()) return true;
+            
+            // Check if all previous steps are completed
+            return stepsBeforeThisOne.All(s => IsStepComplete(s));
         }
     }
 }

@@ -24,5 +24,6 @@ namespace StepCue.TenantApp.Data.Models.Execution
         public bool IsCancelled { get; set; }
         public int? FallbackOriginStepId { get; set; }
         public string FallbackReason { get; set; } = string.Empty;
+        public int? PlanStepOrder { get; set; } // Tracks the original plan step order for fallback lookups
     }
 }

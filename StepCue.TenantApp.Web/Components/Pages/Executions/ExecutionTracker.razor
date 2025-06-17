@@ -283,8 +283,8 @@
                                                  step.StepType == StepCue.TenantApp.Data.Models.Planning.StepType.Execution && 
                                                  HasAnyPreviousStepWithFallback(step))
                                             {
-                                                <MudButton Variant="Variant.Outlined" 
-                                                         Color="Color.Warning" 
+                                                <MudButton Variant="Variant.Filled" 
+                                                         Color="Color.Error" 
                                                          Size="Size.Small"
                                                          OnClick="@(() => OpenFallbackDialog(step))"
                                                          onclick:stopPropagation="true">
@@ -1095,7 +1095,8 @@
         
         foreach (var step in _execution.Steps)
         {
-            var hasFeatures = await ExecutionService.HasFallbackStepsAsync(_execution.Id, step.Order);
+            var planStepOrder = step.PlanStepOrder ?? step.Order;
+            var hasFeatures = await ExecutionService.HasFallbackStepsAsync(_execution.Id, planStepOrder);
             _stepFallbackAvailability[step.Order] = hasFeatures;
         }
     }
@@ -1106,7 +1107,8 @@
         if (_execution == null)
             return new List<Fallback>();
         
-        return await ExecutionService.GetFallbackStepsAsync(_execution.Id, step.Order);
+        var planStepOrder = step.PlanStepOrder ?? step.Order;
+        return await ExecutionService.GetFallbackStepsAsync(_execution.Id, planStepOrder);
     }
     
     // Helper method to load all available fallback options from previous steps
