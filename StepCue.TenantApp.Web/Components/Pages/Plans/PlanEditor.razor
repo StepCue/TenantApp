@@ -1,4 +1,3 @@
-@page "/plans/new"
 @page "/plans/{Id:int}"
 @using StepCue.TenantApp.Core.Services
 @using StepCue.TenantApp.Data.Models.Planning
@@ -39,10 +38,10 @@
     }
 </style>
 
-<PageTitle>@(_isNewPlan ? "Create Plan" : "Edit Plan")</PageTitle>
+<PageTitle>Edit Plan</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudText Typo="Typo.h4" Class="mb-4">@(_isNewPlan ? "Create Plan" : "Edit Plan")</MudText>
+    <MudText Typo="Typo.h4" Class="mb-4">Edit Plan</MudText>
     
     @if (_isLoading)
     {
@@ -287,10 +286,9 @@
 
 @code {
     [Parameter]
-    public int? Id { get; set; }
+    public int Id { get; set; }
     
     private Plan _plan = new Plan();
-    private bool _isNewPlan => Id == null;
     private bool _isLoading = true;
     private MudForm _form = default!;
     private PlanMember? _selectedMemberToHighlight;
@@ -308,20 +306,17 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (!_isNewPlan)
+        var plan = await PlanService.GetPlanAsync(Id);
+        if (plan != null)
         {
-            var plan = await PlanService.GetPlanAsync(Id.Value);
-            if (plan != null)
-            {
-                _plan = plan;
-                // Ensure steps have proper order if they don't
-                EnsureStepOrdering();
-            }
-            else
-            {
-                NavigationManager.NavigateTo("/plans");
-                Snackbar.Add("Plan not found", Severity.Error);
-            }
+            _plan = plan;
+            // Ensure steps have proper order if they don't
+            EnsureStepOrdering();
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/plans");
+            Snackbar.Add("Plan not found", Severity.Error);
         }
         
         _isLoading = false;
@@ -345,10 +340,34 @@
 
     private void SortStepsCollection()
     {
-        // Sort the collection in-place by Order
+        // Sort the collection without breaking Entity Framework tracking
+        // Instead of clearing and re-adding, reorder the existing collection in place
         var sortedSteps = _plan.Steps.OrderBy(s => s.Order).ToList();
-        _plan.Steps.Clear();
-        _plan.Steps.AddRange(sortedSteps);
+        
+        // Only rearrange if needed
+        bool needsReordering = false;
+        for (int i = 0; i < _plan.Steps.Count; i++)
+        {
+            if (_plan.Steps[i] != sortedSteps[i])
+            {
+                needsReordering = true;
+                break;
+            }
+        }
+        
+        if (needsReordering)
+        {
+            // Move items to correct positions without clearing the collection
+            for (int i = 0; i < sortedSteps.Count; i++)
+            {
+                var currentIndex = _plan.Steps.IndexOf(sortedSteps[i]);
+                if (currentIndex != i)
+                {
+                    _plan.Steps.RemoveAt(currentIndex);
+                    _plan.Steps.Insert(i, sortedSteps[i]);
+                }
+            }
+        }
     }
 
     private void AddStep()
@@ -431,16 +450,9 @@
                 return;
             }
             
-            if (_isNewPlan)
-            {
-                await PlanService.CreatePlanAsync(_plan);
-                Snackbar.Add("Plan created successfully", Severity.Success);
-            }
-            else
-            {
-                await PlanService.UpdatePlanAsync(_plan);
-                Snackbar.Add("Plan updated successfully", Severity.Success);
-            }
+            await PlanService.UpdatePlanAsync(_plan);
+            Snackbar.Add("Plan updated successfully", Severity.Success);
+            
             
             NavigationManager.NavigateTo("/plans");
         }
