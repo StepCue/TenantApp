@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace StepCue.TenantApp.Data.Models.Planning
+namespace StepCue.TenantApp.Data.Models
 {
     public enum StepType
     {

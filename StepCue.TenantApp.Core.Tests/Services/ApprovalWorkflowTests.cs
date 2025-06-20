@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using StepCue.TenantApp.Core.Services;
 using StepCue.TenantApp.Data;
+using StepCue.TenantApp.Data.Models;
 using StepCue.TenantApp.Data.Models.Execution;
 using StepCue.TenantApp.Data.Models.Planning;
 

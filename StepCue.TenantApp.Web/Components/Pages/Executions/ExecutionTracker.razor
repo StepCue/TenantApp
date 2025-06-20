@@ -1,6 +1,7 @@
 @page "/executions/{Id:int}"
 @page "/executions/create/{PlanId:int}"
 @using StepCue.TenantApp.Core.Services
+@using StepCue.TenantApp.Data.Models
 @using StepCue.TenantApp.Data.Models.Execution
 @using StepCue.TenantApp.Data.Models.Planning
 @using StepCue.TenantApp.Web.Services
@@ -173,7 +174,7 @@
                                     <div class="d-flex justify-space-between align-center mb-2">
                                         <div class="d-flex align-center" style="gap: 8px;">
                                             <MudText Typo="Typo.h6">@step.Name</MudText>
-                                            @if (step.StepType == StepCue.TenantApp.Data.Models.Planning.StepType.GoNoGo)
+                                            @if (step.StepType == StepType.GoNoGo)
                                             {
                                                 @if (step.FallbackOriginStepId.HasValue)
                                                 {
@@ -246,7 +247,7 @@
                                             <!-- Don't show action buttons for cancelled steps -->
                                             @if (!step.IsCancelled && !isCompleted && canStart)
                                             {
-                                                @if (step.StepType == StepCue.TenantApp.Data.Models.Planning.StepType.GoNoGo)
+                                                @if (step.StepType == StepType.GoNoGo)
                                                 {
                                                     <MudButton Variant="Variant.Filled" 
                                                              Color="@(step.FallbackOriginStepId.HasValue ? Color.Error : Color.Warning)" 
@@ -280,7 +281,7 @@
                                             
                                             <!-- Fallback button - show for started execution steps that come after steps with fallback definitions -->
                                             @if (!step.IsCancelled && isStarted && !isCompleted && 
-                                                 step.StepType == StepCue.TenantApp.Data.Models.Planning.StepType.Execution && 
+                                                 step.StepType == StepType.Execution && 
                                                  HasAnyPreviousStepWithFallback(step))
                                             {
                                                 <MudButton Variant="Variant.Filled" 

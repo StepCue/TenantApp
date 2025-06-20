@@ -1,4 +1,5 @@
 using StepCue.TenantApp.Core.Services;
+using StepCue.TenantApp.Data.Models;
 using StepCue.TenantApp.Data.Models.Execution;
 using StepCue.TenantApp.Data.Models.Planning;
 
@@ -108,7 +109,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
             var goNoGoStep = new ExecutionStep
             {
                 StepType = StepType.GoNoGo,
-                AssignedMembers = new List<PlanMember>(),
+                AssignedMembers = new List<ExecutionMember>(),
                 Approvals = new List<ExecutionStepApproval>()
             };
 
@@ -120,13 +121,13 @@ namespace StepCue.TenantApp.Core.Tests.Services
         public void IsStepComplete_GoNoGoStep_ShouldReturnFalseWhenNotAllMembersApproved()
         {
             // Arrange
-            var member1 = new PlanMember { Id = 1, Name = "John", EmailAddress = "john@example.com" };
-            var member2 = new PlanMember { Id = 2, Name = "Jane", EmailAddress = "jane@example.com" };
+            var member1 = new ExecutionMember { Id = 1, Name = "John", EmailAddress = "john@example.com" };
+            var member2 = new ExecutionMember { Id = 2, Name = "Jane", EmailAddress = "jane@example.com" };
 
             var goNoGoStep = new ExecutionStep
             {
                 StepType = StepType.GoNoGo,
-                AssignedMembers = new List<PlanMember> { member1, member2 },
+                AssignedMembers = new List<ExecutionMember> { member1, member2 },
                 Approvals = new List<ExecutionStepApproval>
                 {
                     new ExecutionStepApproval { ExecutionMemberId = 1, IsApproved = true },
@@ -142,13 +143,13 @@ namespace StepCue.TenantApp.Core.Tests.Services
         public void IsStepComplete_GoNoGoStep_ShouldReturnTrueWhenAllMembersApproved()
         {
             // Arrange
-            var member1 = new PlanMember { Id = 1, Name = "John", EmailAddress = "john@example.com" };
-            var member2 = new PlanMember { Id = 2, Name = "Jane", EmailAddress = "jane@example.com" };
+            var member1 = new ExecutionMember { Id = 1, Name = "John", EmailAddress = "john@example.com" };
+            var member2 = new ExecutionMember { Id = 2, Name = "Jane", EmailAddress = "jane@example.com" };
 
             var goNoGoStep = new ExecutionStep
             {
                 StepType = StepType.GoNoGo,
-                AssignedMembers = new List<PlanMember> { member1, member2 },
+                AssignedMembers = new List<ExecutionMember> { member1, member2 },
                 Approvals = new List<ExecutionStepApproval>
                 {
                     new ExecutionStepApproval { ExecutionMemberId = 1, IsApproved = true },

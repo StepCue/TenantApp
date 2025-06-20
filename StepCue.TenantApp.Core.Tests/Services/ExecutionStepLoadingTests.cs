@@ -132,14 +132,14 @@ namespace StepCue.TenantApp.Core.Tests.Services
 
             // Act - Load execution step directly from context to check foreign keys
             var executionSteps = await Context.ExecutionSteps
-                .Where(es => es.ExecutionId == execution.Id)
+                .Where(es => es.Id == execution.Id)
                 .ToListAsync();
 
             // Assert
             Assert.Single(executionSteps);
             var step = executionSteps.First();
             
-            Assert.Equal(execution.Id, step.ExecutionId);
+            Assert.Equal(execution.Id, step.Id);
             Assert.NotNull(step.Name);
             Assert.Equal("Step 1", step.Name);
         }

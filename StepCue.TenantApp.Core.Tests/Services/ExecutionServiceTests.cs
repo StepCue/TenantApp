@@ -40,7 +40,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
                     {
                         Name = "Execution Step",
                         Summary = "Step summary",
-                        AssignedMembers = new List<PlanMember>
+                        AssignedMembers = new List<ExecutionMember>
                         {
                             new ExecutionMember { Name = "Assigned Member", EmailAddress = "assigned@test.com" }
                         }
@@ -94,7 +94,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
                     new ExecutionStep
                     {
                         Name = "Step 1",
-                        AssignedMembers = new List<PlanMember>
+                        AssignedMembers = new List<ExecutionMember>
                         {
                             new ExecutionMember { Name = "Member 1" }
                         }

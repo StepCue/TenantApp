@@ -316,7 +316,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
                         Name = "Step 1", 
                         Summary = "First step", 
                         Order = 1,
-                        AssignedMembers = new List<PlanMember> { new PlanMember { Id = member.Id, Name = member.Name, EmailAddress = member.EmailAddress } }
+                        AssignedMembers = new List<PlanMember> { member }
                     },
                     new PlanStep 
                     { 
@@ -324,10 +324,10 @@ namespace StepCue.TenantApp.Core.Tests.Services
                         Name = "Step 2", 
                         Summary = "Second step", 
                         Order = 2,
-                        AssignedMembers = new List<PlanMember> { new PlanMember { Id = member.Id, Name = member.Name, EmailAddress = member.EmailAddress } }
+                        AssignedMembers = new List<PlanMember> { member }
                     }
                 },
-                Members = new List<PlanMember> { new PlanMember { Id = member.Id, Name = member.Name, EmailAddress = member.EmailAddress } }
+                Members = new List<PlanMember> { member }
             };
 
             // Act

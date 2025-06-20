@@ -1,11 +1,12 @@
 @page "/plans/new"
 @page "/plans/{Id:int}"
-@using StepCue.TenantApp.Core.Services
-@using StepCue.TenantApp.Data.Models.Planning
-@using StepCue.TenantApp.Web.Services
-@using StepCue.TenantApp.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.JSInterop
+@using StepCue.TenantApp.Core.Services
+@using StepCue.TenantApp.Data.Models
+@using StepCue.TenantApp.Data.Models.Planning
+@using StepCue.TenantApp.Web.Components.Shared
+@using StepCue.TenantApp.Web.Services
 @inject PlanService PlanService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar

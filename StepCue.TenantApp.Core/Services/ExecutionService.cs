@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using StepCue.TenantApp.Data;
+using StepCue.TenantApp.Data.Models;
 using StepCue.TenantApp.Data.Models.Execution;
 using StepCue.TenantApp.Data.Models.Planning;
 
@@ -147,13 +148,13 @@ namespace StepCue.TenantApp.Core.Services
             }
 
             // For regular execution steps, check if CompleteOn is set
-            if (step.StepType == Data.Models.Planning.StepType.Execution)
+            if (step.StepType == StepType.Execution)
             {
                 return step.CompleteOn.HasValue;
             }
 
             // For go/nogo steps, check if all assigned members have approved
-            if (step.StepType == Data.Models.Planning.StepType.GoNoGo)
+            if (step.StepType == StepType.GoNoGo)
             {
                 if (!step.AssignedMembers.Any())
                     return false; // Can't complete an approval step with no assigned members
@@ -230,7 +231,7 @@ namespace StepCue.TenantApp.Core.Services
                 Summary = $"Approval required for falling back from step '{originalStep.Name}'. Reason: {reason}",
                 StepType = StepType.GoNoGo, // Changed from Fallback to GoNoGo
                 Order = approvalStepOrder,
-                ExecutionId = executionId,
+                Id = executionId,
                 FallbackOriginStepId = originalStepId,
                 FallbackReason = reason
             };
@@ -321,7 +322,7 @@ namespace StepCue.TenantApp.Core.Services
                     Screenshot = fallback.Screenshot,
                     StepType = StepType.Execution, // Fallback definitions become execution steps
                     Order = currentOrder++,
-                    ExecutionId = executionId,
+                    Id = executionId,
                     FallbackOriginStepId = originalStepId
                 };
 

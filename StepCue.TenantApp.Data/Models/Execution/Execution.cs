@@ -1,21 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Security.AccessControl;
-using System.Text;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using StepCue.TenantApp.Data.Models.Planning;
 
 namespace StepCue.TenantApp.Data.Models.Execution
 {
     public class Execution
     {
+        [Key]
         public int Id { get; set; }
+        
         public string Name { get; set; } = string.Empty;
+        
         public DateTime CreatedOn { get; set; } = DateTime.Now;
+        
+        [ForeignKey("PlanId")]
         public Plan Plan { get; set; }
+        
         public int PlanId { get; set; }
+        
+        [InverseProperty(nameof(ExecutionMember.Execution))]
         public List<ExecutionMember> Members { get; set; } = new();
-        public List<ExecutionStep> Steps { get; set; } = new(); // Fixed property name from Step to Steps
+        
+        [InverseProperty(nameof(ExecutionStep.Execution))]
+        public List<ExecutionStep> Steps { get; set; } = new();
     }
 }
