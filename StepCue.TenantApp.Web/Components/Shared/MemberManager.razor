@@ -1,39 +1,90 @@
 @using StepCue.TenantApp.Data.Models.Planning
 
-<MudPaper Class="pa-4" Elevation="0">
-    <MudList T="String" Dense="true">
-        @foreach (var member in Members)
-        {
-            <MudListItem T="String" @key="member">
-                <div class="d-flex align-center">
-                    <MudAvatar Color="Color.Primary" Class="mr-2">
-                        @member.Name?.FirstOrDefault().ToString().ToUpper()
-                    </MudAvatar>
-                    <div class="flex-grow-1">
-                        <MudTextField @bind-Value="member.Name" 
-                                     Label="Name" 
-                                     Variant="Variant.Outlined" 
-                                     Class="mr-2" />
-                        <MudTextField @bind-Value="member.EmailAddress" 
-                                     Label="Email" 
-                                     Variant="Variant.Outlined" 
-                                     Class="mt-2" />
-                    </div>
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
-                                  Color="Color.Error" 
-                                  OnClick="@(() => Members.Remove(member))" />
-                </div>
-            </MudListItem>
-        }
-    </MudList>
+<div class="member-manager">
+    <div class="d-flex justify-space-between align-center mb-2">
+        <MudText Typo="Typo.subtitle1">Team Members</MudText>
+        <MudButton 
+            StartIcon="@Icons.Material.Filled.PersonAdd" 
+            Color="Color.Primary" 
+            OnClick="@AddMember"
+            Size="Size.Small"
+            Variant="Variant.Text">
+            Add
+        </MudButton>
+    </div>
 
-    <MudButton StartIcon="@Icons.Material.Filled.PersonAdd" 
-              Color="Color.Primary" 
-              OnClick="@AddMember"
-              Class="mt-3">
-        Add Member
-    </MudButton>
-</MudPaper>
+    @if (!Members.Any())
+    {
+        <MudText Align="Align.Center" Class="my-4" Typo="Typo.body2">
+            No members added yet. Click "Add" to add team members.
+        </MudText>
+    }
+    else
+    {
+        <div class="member-list">
+            @foreach (var member in Members)
+            {
+                <MudPaper Elevation="0" Class="member-item pa-2 mb-1">
+                    <div class="d-flex align-center gap-2">
+                        <MudAvatar Size="Size.Small" Color="Color.Primary">
+                            @(string.IsNullOrEmpty(member.Name) ? "?" : member.Name.FirstOrDefault().ToString().ToUpper())
+                        </MudAvatar>
+                        <MudTextField 
+                            @bind-Value="member.Name" 
+                            Placeholder="Name" 
+                            Variant="Variant.Outlined"
+                            Margin="Margin.Dense"
+                            AdornmentIcon="@Icons.Material.Filled.Person"
+                            Adornment="Adornment.Start"
+                            Class="flex-1" />
+                        <MudTextField 
+                            @bind-Value="member.EmailAddress" 
+                            Placeholder="Email" 
+                            Variant="Variant.Outlined"
+                            Margin="Margin.Dense"
+                            AdornmentIcon="@Icons.Material.Filled.Email"
+                            Adornment="Adornment.Start"
+                            Class="flex-1" />
+                        <MudIconButton 
+                            Icon="@Icons.Material.Filled.Delete" 
+                            Color="Color.Error" 
+                            Size="Size.Small"
+                            OnClick="@(() => Members.Remove(member))" />
+                    </div>
+                </MudPaper>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .member-manager {
+        border: 1px solid var(--mud-palette-lines-default);
+        border-radius: 4px;
+        padding: 8px;
+        background-color: var(--mud-palette-background);
+    }
+
+    .member-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .member-item {
+        border: 1px solid var(--mud-palette-lines-default);
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+
+    .member-item:hover {
+        background-color: var(--mud-palette-background-grey);
+    }
+
+    .flex-1 {
+        flex: 1;
+    }
+</style>
 
 @code {
     [Parameter]
