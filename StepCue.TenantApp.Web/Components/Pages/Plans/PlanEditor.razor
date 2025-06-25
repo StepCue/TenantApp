@@ -298,8 +298,7 @@
             if (plan != null)
             {
                 _plan = plan;
-                // Ensure steps have proper order if they don't
-                EnsureStepOrdering();
+           
             }
             else
             {
@@ -311,21 +310,7 @@
         _isLoading = false;
     }
     
-    private void EnsureStepOrdering()
-    {
-        var stepsWithoutOrder = _plan.Steps.Where(s => s.Order == 0).ToList();
-        if (stepsWithoutOrder.Any())
-        {
-            var maxOrder = _plan.Steps.Where(s => s.Order > 0).DefaultIfEmpty().Max(s => s?.Order ?? 0);
-            for (int i = 0; i < stepsWithoutOrder.Count; i++)
-            {
-                stepsWithoutOrder[i].Order = maxOrder + i + 1;
-            }
-        }
-        
-        // Sort the collection to maintain order
-        SortStepsCollection();
-    }
+  
 
     private void SortStepsCollection()
     {
@@ -352,10 +337,8 @@
             var previousStep = _orderedSteps[currentIndex - 1];
             
             // Swap the orders
-            var tempOrder = step.Order;
-            step.Order = previousStep.Order;
-            previousStep.Order = tempOrder;
-            
+            (step.Order, previousStep.Order) = (previousStep.Order, step.Order);
+
             SortStepsCollection();
             StateHasChanged();
         }
@@ -369,10 +352,8 @@
             var nextStep = _orderedSteps[currentIndex + 1];
             
             // Swap the orders
-            var tempOrder = step.Order;
-            step.Order = nextStep.Order;
-            nextStep.Order = tempOrder;
-            
+            (step.Order, nextStep.Order) = (nextStep.Order, step.Order);
+
             SortStepsCollection();
             StateHasChanged();
         }
