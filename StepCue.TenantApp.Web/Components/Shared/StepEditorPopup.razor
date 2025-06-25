@@ -110,7 +110,7 @@
             <MudAlert Severity="Severity.Info" Class="mb-3">
                 No fallback steps defined. Add fallback steps to handle failure scenarios.
             </MudAlert>
-        } *@
+        } 
         
         <MudButton Variant="Variant.Outlined" 
                    StartIcon="Icons.Material.Filled.Add" 
@@ -118,7 +118,7 @@
                    Class="mb-3">
             Add Fallback Step
         </MudButton>
-        
+        *@
         <MudText Typo="Typo.subtitle2" Class="mb-2">Screenshot</MudText>
         <ScreenshotUploader @bind-ImageData="Step.Screenshot" />
         
