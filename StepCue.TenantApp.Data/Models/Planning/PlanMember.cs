@@ -13,6 +13,8 @@ namespace StepCue.TenantApp.Data.Models.Planning
         public string Name { get; set; } = string.Empty;
         
         public string EmailAddress { get; set; } = string.Empty;
+        public List<PlanStep> Steps { get; set; }
+
         
     }
 }

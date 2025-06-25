@@ -60,24 +60,7 @@
                     <MemberManager Members="@_plan.Members" />
                     
                     <MudText Typo="Typo.h6" Class="mt-4">Steps</MudText>
-                    
-                    @if (_plan.Members.Any())
-                    {
-                        <MudPaper Class="pa-2 mt-2 mb-2" Elevation="1">
-                            <MudSelect T="PlanMember" @bind-Value="_selectedMemberToHighlight" 
-                                       Label="Highlight steps for member" 
-                                       Variant="Variant.Outlined" 
-                                       Clearable="true"
-                                       ToStringFunc="@(m => string.IsNullOrEmpty(m?.Name) ? "Unnamed Member" : m.Name)">
-                                @foreach (var member in _plan.Members)
-                                {
-                                    var memberName = string.IsNullOrEmpty(member.Name) ? "Unnamed Member" : member.Name;
-                                    <MudSelectItem T="PlanMember" Value="@member">@memberName</MudSelectItem>
-                                }
-                            </MudSelect>
-                        </MudPaper>
-                    }
-                    
+
                     <MudPaper Class="pa-4 mt-2" Elevation="0">
                         <div Class="d-flex justify-space-between align-center mb-3">
                             <MudText Typo="Typo.h6">Steps Table</MudText>
