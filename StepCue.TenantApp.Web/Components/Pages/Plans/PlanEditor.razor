@@ -306,6 +306,12 @@
                 Snackbar.Add("Plan not found", Severity.Error);
             }
         }
+        else
+        {
+            _plan.Name = "New Plan";
+            await PlanService.CreatePlanAsync(_plan);
+            Snackbar.Add("Plan created successfully", Severity.Success);
+        }
         
         _isLoading = false;
     }
@@ -395,17 +401,10 @@
                 Snackbar.Add("All steps must have names before saving", Severity.Warning);
                 return;
             }
-            
-            if (_isNewPlan)
-            {
-                await PlanService.CreatePlanAsync(_plan);
-                Snackbar.Add("Plan created successfully", Severity.Success);
-            }
-            else
-            {
-                await PlanService.UpdatePlanAsync(_plan);
-                Snackbar.Add("Plan updated successfully", Severity.Success);
-            }
+
+            await PlanService.UpdatePlanAsync(_plan);
+            Snackbar.Add("Plan updated successfully", Severity.Success);
+     
             
             NavigationManager.NavigateTo("/plans");
         }
