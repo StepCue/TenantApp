@@ -6,11 +6,11 @@ using StepCue.TenantApp.Data.Models.Planning;
 
 namespace StepCue.TenantApp.Data.Models.Execution
 {
-    public class ExecutionMember : PlanMember
+    public class ExecutionMember
     {
-        public int ExecutionId { get; set; }
-        
-        [ForeignKey("ExecutionId")]
-        public Execution Execution { get; set; }
+        [Key]
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string EmailAddress { get; set; } = string.Empty;
     }
 }
