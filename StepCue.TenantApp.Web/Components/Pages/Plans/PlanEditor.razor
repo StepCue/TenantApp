@@ -60,24 +60,7 @@
                     <MemberManager Members="@_plan.Members" />
                     
                     <MudText Typo="Typo.h6" Class="mt-4">Steps</MudText>
-                    
-                    @if (_plan.Members.Any())
-                    {
-                        <MudPaper Class="pa-2 mt-2 mb-2" Elevation="1">
-                            <MudSelect T="PlanMember" @bind-Value="_selectedMemberToHighlight" 
-                                       Label="Highlight steps for member" 
-                                       Variant="Variant.Outlined" 
-                                       Clearable="true"
-                                       ToStringFunc="@(m => string.IsNullOrEmpty(m?.Name) ? "Unnamed Member" : m.Name)">
-                                @foreach (var member in _plan.Members)
-                                {
-                                    var memberName = string.IsNullOrEmpty(member.Name) ? "Unnamed Member" : member.Name;
-                                    <MudSelectItem T="PlanMember" Value="@member">@memberName</MudSelectItem>
-                                }
-                            </MudSelect>
-                        </MudPaper>
-                    }
-                    
+
                     <MudPaper Class="pa-4 mt-2" Elevation="0">
                         <div Class="d-flex justify-space-between align-center mb-3">
                             <MudText Typo="Typo.h6">Steps Table</MudText>
@@ -315,8 +298,7 @@
             if (plan != null)
             {
                 _plan = plan;
-                // Ensure steps have proper order if they don't
-                EnsureStepOrdering();
+           
             }
             else
             {
@@ -324,25 +306,17 @@
                 Snackbar.Add("Plan not found", Severity.Error);
             }
         }
+        else
+        {
+            _plan.Name = "New Plan";
+            await PlanService.CreatePlanAsync(_plan);
+            Snackbar.Add("Plan created successfully", Severity.Success);
+        }
         
         _isLoading = false;
     }
     
-    private void EnsureStepOrdering()
-    {
-        var stepsWithoutOrder = _plan.Steps.Where(s => s.Order == 0).ToList();
-        if (stepsWithoutOrder.Any())
-        {
-            var maxOrder = _plan.Steps.Where(s => s.Order > 0).DefaultIfEmpty().Max(s => s?.Order ?? 0);
-            for (int i = 0; i < stepsWithoutOrder.Count; i++)
-            {
-                stepsWithoutOrder[i].Order = maxOrder + i + 1;
-            }
-        }
-        
-        // Sort the collection to maintain order
-        SortStepsCollection();
-    }
+  
 
     private void SortStepsCollection()
     {
@@ -369,10 +343,8 @@
             var previousStep = _orderedSteps[currentIndex - 1];
             
             // Swap the orders
-            var tempOrder = step.Order;
-            step.Order = previousStep.Order;
-            previousStep.Order = tempOrder;
-            
+            (step.Order, previousStep.Order) = (previousStep.Order, step.Order);
+
             SortStepsCollection();
             StateHasChanged();
         }
@@ -386,10 +358,8 @@
             var nextStep = _orderedSteps[currentIndex + 1];
             
             // Swap the orders
-            var tempOrder = step.Order;
-            step.Order = nextStep.Order;
-            nextStep.Order = tempOrder;
-            
+            (step.Order, nextStep.Order) = (nextStep.Order, step.Order);
+
             SortStepsCollection();
             StateHasChanged();
         }
@@ -431,17 +401,10 @@
                 Snackbar.Add("All steps must have names before saving", Severity.Warning);
                 return;
             }
-            
-            if (_isNewPlan)
-            {
-                await PlanService.CreatePlanAsync(_plan);
-                Snackbar.Add("Plan created successfully", Severity.Success);
-            }
-            else
-            {
-                await PlanService.UpdatePlanAsync(_plan);
-                Snackbar.Add("Plan updated successfully", Severity.Success);
-            }
+
+            await PlanService.UpdatePlanAsync(_plan);
+            Snackbar.Add("Plan updated successfully", Severity.Success);
+     
             
             NavigationManager.NavigateTo("/plans");
         }

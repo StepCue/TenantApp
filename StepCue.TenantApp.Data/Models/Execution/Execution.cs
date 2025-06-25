@@ -14,16 +14,11 @@ namespace StepCue.TenantApp.Data.Models.Execution
         public string Name { get; set; } = string.Empty;
         
         public DateTime CreatedOn { get; set; } = DateTime.Now;
-        
-        [ForeignKey("PlanId")]
+
         public Plan Plan { get; set; }
-        
-        public int PlanId { get; set; }
-        
-        [InverseProperty(nameof(ExecutionMember.Execution))]
+
         public List<ExecutionMember> Members { get; set; } = new();
         
-        [InverseProperty(nameof(ExecutionStep.Execution))]
         public List<ExecutionStep> Steps { get; set; } = new();
     }
 }

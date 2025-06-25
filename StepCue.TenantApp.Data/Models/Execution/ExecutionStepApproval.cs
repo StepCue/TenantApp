@@ -9,15 +9,9 @@ namespace StepCue.TenantApp.Data.Models.Execution
     {
         [Key]
         public int Id { get; set; }
-        
-        public int ExecutionStepId { get; set; }
-        
-        [ForeignKey("ExecutionStepId")]
+
         public ExecutionStep ExecutionStep { get; set; }
         
-        public int ExecutionMemberId { get; set; }
-        
-        [ForeignKey("ExecutionMemberId")]
         public ExecutionMember ExecutionMember { get; set; }
         
         public bool IsApproved { get; set; }
