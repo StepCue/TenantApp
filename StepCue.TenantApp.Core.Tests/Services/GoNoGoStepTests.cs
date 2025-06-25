@@ -130,8 +130,8 @@ namespace StepCue.TenantApp.Core.Tests.Services
                 AssignedMembers = new List<ExecutionMember> { member1, member2 },
                 Approvals = new List<ExecutionStepApproval>
                 {
-                    new ExecutionStepApproval { ExecutionMemberId = 1, IsApproved = true },
-                    new ExecutionStepApproval { ExecutionMemberId = 2, IsApproved = false }
+                    new ExecutionStepApproval { ExecutionMember = member1, IsApproved = true },
+                    new ExecutionStepApproval { ExecutionMember = member2, IsApproved = false }
                 }
             };
 
@@ -152,8 +152,8 @@ namespace StepCue.TenantApp.Core.Tests.Services
                 AssignedMembers = new List<ExecutionMember> { member1, member2 },
                 Approvals = new List<ExecutionStepApproval>
                 {
-                    new ExecutionStepApproval { ExecutionMemberId = 1, IsApproved = true },
-                    new ExecutionStepApproval { ExecutionMemberId = 2, IsApproved = true }
+                    new ExecutionStepApproval { ExecutionMember = member1, IsApproved = true },
+                    new ExecutionStepApproval { ExecutionMember = member2, IsApproved = true }
                 }
             };
 
