@@ -159,9 +159,16 @@ namespace StepCue.TenantApp.Core.Services
                 if (!step.AssignedMembers.Any())
                     return false; // Can't complete an approval step with no assigned members
 
-                //todo  All assigned members must have an approval record that is approved
-
-                throw new NotImplementedException();
+                // All assigned members must have an approval record that is approved
+                // For each assigned member, there should be an approval record where IsApproved = true
+                foreach (var assignedMember in step.AssignedMembers)
+                {
+                    var approval = step.Approvals.FirstOrDefault(a => a.ExecutionMember.Id == assignedMember.Id);
+                    if (approval == null || !approval.IsApproved)
+                        return false;
+                }
+                
+                return true;
             }
 
             return false;

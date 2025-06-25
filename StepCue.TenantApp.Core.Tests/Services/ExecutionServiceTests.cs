@@ -32,7 +32,6 @@ namespace StepCue.TenantApp.Core.Tests.Services
             var execution = new Execution
             {
                 Name = "Test Execution",
-                PlanId = plan.Id,
                 Plan = plan,
                 Steps = new List<ExecutionStep>
                 {
@@ -87,7 +86,6 @@ namespace StepCue.TenantApp.Core.Tests.Services
             var execution = new Execution
             {
                 Name = "Test Execution",
-                PlanId = plan.Id,
                 Plan = plan,
                 Steps = new List<ExecutionStep>
                 {
@@ -157,9 +155,9 @@ namespace StepCue.TenantApp.Core.Tests.Services
             // Assert
             Assert.NotNull(result);
             Assert.Equal($"Execution of {plan.Name}", result.Name);
-            Assert.Equal(plan.Id, result.PlanId);
             Assert.NotNull(result.Plan);
             Assert.Equal(plan.Name, result.Plan.Name);
+            Assert.Equal(plan.Id, result.Plan.Id);
 
             // Verify members were copied correctly
             Assert.Equal(2, result.Members.Count);
@@ -254,7 +252,6 @@ namespace StepCue.TenantApp.Core.Tests.Services
             var execution = new Execution
             {
                 Name = "Test Execution",
-                PlanId = plan.Id,
                 Plan = plan,
                 Members = new List<ExecutionMember>
                 {
