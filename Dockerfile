@@ -6,6 +6,8 @@ WORKDIR /app
 COPY *.sln ./
 COPY StepCue.TenantApp.Web/*.csproj StepCue.TenantApp.Web/
 COPY StepCue.TenantApp.Data/*.csproj StepCue.TenantApp.Data/
+COPY StepCue.TenantApp.Core/*.csproj StepCue.TenantApp.Core/
+COPY StepCue.TenantApp.Core.Tests/*.csproj StepCue.TenantApp.Core.Tests/
 
 # Restore NuGet packages
 RUN dotnet restore
