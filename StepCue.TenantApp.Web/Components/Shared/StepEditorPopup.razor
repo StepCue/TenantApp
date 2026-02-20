@@ -1,11 +1,10 @@
 @using StepCue.TenantApp.Data.Models
 @using StepCue.TenantApp.Data.Models.Planning
 
-<MudContainer>
-    <MudPaper Class="pa-6" Elevation="1">
-        <MudText Typo="Typo.h5" Class="mb-4">
-            Edit Step Details
-        </MudText>
+<MudPaper Class="pa-6" Elevation="1">
+    <MudText Typo="Typo.h5" Class="mb-4">
+        Edit Step Details
+    </MudText>
         
         <MudTextField @bind-Value="Step.Name" 
                      Label="Step Name" 
@@ -121,13 +120,12 @@
         *@
         <MudText Typo="Typo.subtitle2" Class="mb-2">Screenshot</MudText>
         <ScreenshotUploader @bind-ImageData="Step.Screenshot" />
-        
-        <div Class="d-flex gap-2 mt-4">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Save</MudButton>
-            <MudButton Variant="Variant.Outlined" OnClick="Cancel">Cancel</MudButton>
-        </div>
-    </MudPaper>
-</MudContainer>
+
+                        <div Class="d-flex gap-2 mt-4">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Save</MudButton>
+                            <MudButton Variant="Variant.Outlined" OnClick="Cancel">Cancel</MudButton>
+                        </div>
+                    </MudPaper>
 
 @code {
     [Parameter] 

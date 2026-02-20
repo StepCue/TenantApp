@@ -1,0 +1,166 @@
+@using StepCue.TenantApp.Data.Models.Planning
+@using StepCue.TenantApp.Data.Models
+
+<MudPaper Elevation="2" Class="pa-4" Style="position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto;">
+    <MudText Typo="Typo.h6" Class="mb-3">Plan Overview</MudText>
+    
+    @if (!Steps.Any())
+    {
+        <MudAlert Severity="Severity.Info" Dense="true">
+            No steps yet. Add steps to see the plan timeline.
+        </MudAlert>
+    }
+    else
+    {
+        <div class="timeline-container">
+            @foreach (var step in Steps.OrderBy(s => s.Order))
+            {
+                var isSelected = SelectedStepId == step.Id;
+                var stepClass = isSelected ? "timeline-step selected" : "timeline-step";
+                
+                <div class="@stepClass" @onclick="@(() => OnStepClick.InvokeAsync(step))">
+                    <div class="timeline-marker">
+                        <div class="timeline-dot">
+                            <MudIcon Icon="@GetStepIcon(step)" Size="Size.Small" />
+                        </div>
+                        @if (step.Order < Steps.OrderBy(s => s.Order).Last().Order)
+                        {
+                            <div class="timeline-line"></div>
+                        }
+                    </div>
+                    <div class="timeline-content">
+                        <MudText Typo="Typo.body2" Class="font-weight-bold">
+                            Step @step.Order: @(string.IsNullOrWhiteSpace(step.Name) ? "Untitled Step" : step.Name)
+                        </MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Default">
+                            @GetStepTypeLabel(step.StepType)
+                        </MudText>
+                        @if (step.AssignedMembers.Any())
+                        {
+                            <div class="mt-1">
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary">
+                                    @step.AssignedMembers.Count member(s)
+                                </MudChip>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+        
+        <MudDivider Class="my-3" />
+        
+        <div class="plan-summary">
+            <MudText Typo="Typo.caption" Class="mb-1">
+                <strong>Total Steps:</strong> @Steps.Count
+            </MudText>
+            <MudText Typo="Typo.caption">
+                <strong>Activities:</strong> @Steps.Count(s => s.StepType == StepType.Activity) | 
+                <strong>Go/No-Go:</strong> @Steps.Count(s => s.StepType == StepType.GoNoGo)
+            </MudText>
+        </div>
+    }
+</MudPaper>
+
+<style>
+    .timeline-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+    }
+    
+    .timeline-step {
+        display: flex;
+        gap: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+        padding: 8px;
+        border-radius: 4px;
+        margin-bottom: 8px;
+    }
+    
+    .timeline-step:hover {
+        background-color: var(--mud-palette-action-default-hover);
+    }
+
+    .timeline-step.selected {
+        border: 2px solid var(--mud-palette-primary);
+        border-radius: 6px;
+        box-shadow: 0 0 0 2px rgba(var(--mud-palette-primary-rgb), 0.15);
+        background-color: var(--mud-palette-surface);
+    }
+    
+    .timeline-marker {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+    }
+    
+    .timeline-dot {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: var(--mud-palette-primary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1;
+        flex-shrink: 0;
+    }
+
+    .timeline-step.selected .timeline-dot {
+        background-color: var(--mud-palette-primary-darken);
+        transform: scale(1.1);
+    }
+    
+    .timeline-line {
+        width: 2px;
+        flex: 1;
+        background-color: var(--mud-palette-divider);
+        min-height: 20px;
+    }
+    
+    .timeline-content {
+        flex: 1;
+        padding-top: 4px;
+    }
+    
+    .plan-summary {
+        padding: 8px;
+        background-color: var(--mud-palette-surface);
+        border-radius: 4px;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public List<PlanStep> Steps { get; set; } = new();
+    
+    [Parameter]
+    public int? SelectedStepId { get; set; }
+    
+    [Parameter]
+    public EventCallback<PlanStep> OnStepClick { get; set; }
+    
+    private string GetStepIcon(PlanStep step)
+    {
+        return step.StepType switch
+        {
+            StepType.Activity => Icons.Material.Filled.CheckCircle,
+            StepType.GoNoGo => Icons.Material.Filled.HowToReg,
+            _ => Icons.Material.Filled.Circle
+        };
+    }
+    
+    private string GetStepTypeLabel(StepType stepType)
+    {
+        return stepType switch
+        {
+            StepType.Activity => "Activity",
+            StepType.GoNoGo => "Go/No-Go Decision",
+            _ => "Unknown"
+        };
+    }
+}

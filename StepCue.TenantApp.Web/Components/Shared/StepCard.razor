@@ -1,0 +1,416 @@
+@using StepCue.TenantApp.Data.Models.Planning
+@using StepCue.TenantApp.Data.Models
+
+<MudPaper Elevation="2" Class="@GetCardClass()" @onclick="OnCardClick">
+    <div class="step-card-header">
+        <div class="drag-handle" @onclick:stopPropagation="true">
+            <MudIcon Icon="@Icons.Material.Filled.DragIndicator" Size="Size.Small" />
+        </div>
+        <div class="step-order">
+            <MudText Typo="Typo.body2" Class="font-weight-bold">@Step.Order</MudText>
+        </div>
+        <div class="step-actions">
+            <MudIconButton 
+                Icon="@Icons.Material.Filled.KeyboardArrowUp" 
+                Size="Size.Small" 
+                Color="Color.Default"
+                Disabled="@(!CanMoveUp)"
+                OnClick="@HandleMoveUp" 
+                Title="Move Up" />
+            <MudIconButton 
+                Icon="@Icons.Material.Filled.KeyboardArrowDown" 
+                Size="Size.Small" 
+                Color="Color.Default"
+                Disabled="@(!CanMoveDown)"
+                OnClick="@HandleMoveDown" 
+                Title="Move Down" />
+        </div>
+    </div>
+    
+    <div class="step-card-body">
+        @if (IsEditingName)
+        {
+            <MudTextField 
+                @bind-Value="@Step.Name" 
+                Label="Step Name"
+                Placeholder="Enter step name and press Enter..."
+                Variant="Variant.Outlined"
+                Margin="Margin.Dense"
+                Immediate="true"
+                OnKeyDown="@HandleKeyDown"
+                @onclick:stopPropagation="true"
+                AutoFocus="true"
+                Class="mb-2" />
+        }
+        else
+        {
+            <div class="step-name" @onclick="StartEditingName" @onclick:stopPropagation="true">
+                <MudText Typo="Typo.h6" Class="@(string.IsNullOrWhiteSpace(Step.Name) ? "placeholder-text" : "")">
+                    @(string.IsNullOrWhiteSpace(Step.Name) ? "Click to add step name..." : Step.Name)
+                </MudText>
+            </div>
+        }
+        
+        <div class="step-metadata">
+            <MudSelect 
+                T="StepType" 
+                @bind-Value="@Step.StepType"
+                Label="Type"
+                Variant="Variant.Outlined"
+                Margin="Margin.Dense"
+                Dense="true"
+                @onclick:stopPropagation="true"
+                Class="step-type-select">
+                <MudSelectItem T="StepType" Value="@StepType.Activity">
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" />
+                        Activity
+                    </div>
+                </MudSelectItem>
+                <MudSelectItem T="StepType" Value="@StepType.GoNoGo">
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.HowToReg" Size="Size.Small" />
+                        Go/No-Go
+                    </div>
+                </MudSelectItem>
+            </MudSelect>
+            
+            <MudSelect 
+                T="PlanMember" 
+                MultiSelection="true" 
+                SelectedValues="@Step.AssignedMembers"
+                SelectedValuesChanged="@((IEnumerable<PlanMember> values) => OnMembersChanged(values))"
+                Label="Assigned Members"
+                Variant="Variant.Outlined"
+                Margin="Margin.Dense"
+                Dense="true"
+                @onclick:stopPropagation="true"
+                ToStringFunc="@(m => string.IsNullOrEmpty(m?.Name) ? "Unnamed Member" : m.Name)"
+                Class="flex-grow-1">
+                @foreach (var member in AvailableMembers)
+                {
+                    var memberName = string.IsNullOrEmpty(member.Name) ? "Unnamed Member" : member.Name;
+                    <MudSelectItem T="PlanMember" Value="@member">@memberName</MudSelectItem>
+                }
+                <MudDivider Class="my-2" />
+                <MudButton 
+                    StartIcon="@Icons.Material.Filled.PersonAdd" 
+                    FullWidth="true"
+                    Color="Color.Primary"
+                    Variant="Variant.Text"
+                    Size="Size.Small"
+                    OnClick="@(() => OnAddNewMember.InvokeAsync(Step))"
+                    Class="px-2 py-1">
+                    Add New Member
+                </MudButton>
+            </MudSelect>
+        </div>
+        
+        @if (!string.IsNullOrWhiteSpace(Step.Summary) || Step.Screenshot != null || Step.FallbackActivities.Any())
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text" Icon="@Icons.Material.Filled.Info">
+                Additional details added
+            </MudChip>
+        }
+    </div>
+    
+    <div class="step-card-footer">
+        @if (IsEditingName)
+        {
+            <MudButton 
+                Variant="Variant.Filled" 
+                Color="Color.Primary" 
+                Size="Size.Small"
+                StartIcon="@Icons.Material.Filled.Save"
+                OnClick="@HandleSaveClick"
+                Class="mr-2">
+                Save
+            </MudButton>
+            <MudButton 
+                Variant="Variant.Outlined" 
+                Color="Color.Default" 
+                Size="Size.Small"
+                OnClick="@HandleCancelClick">
+                Cancel
+            </MudButton>
+        }
+        else
+        {
+            <MudButton 
+                Variant="Variant.Text" 
+                Color="Color.Primary" 
+                Size="Size.Small"
+                StartIcon="@Icons.Material.Filled.MoreHoriz"
+                OnClick="@HandleEditMoreClick">
+                Edit More
+            </MudButton>
+            <MudSpacer />
+            <MudIconButton 
+                Icon="@Icons.Material.Filled.Delete" 
+                Size="Size.Small" 
+                Color="Color.Error"
+                OnClick="@HandleDeleteClick"
+                Title="Delete Step" />
+        }
+    </div>
+</MudPaper>
+
+<style>
+    .step-card {
+        border-radius: 8px;
+        overflow: hidden;
+        transition: all 0.2s;
+        border: 2px solid transparent;
+        cursor: pointer;
+    }
+    
+    .step-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+    
+    .step-card.selected {
+        border-color: var(--mud-palette-primary);
+        box-shadow: 0 0 0 3px rgba(var(--mud-palette-primary-rgb), 0.2);
+    }
+
+    .step-card.flash {
+        animation: flash-highlight 0.8s ease-in-out;
+    }
+
+    @@keyframes flash-highlight {
+        0%, 100% { background-color: transparent; }
+        50% { background-color: var(--mud-palette-warning-lighten); }
+    }
+    
+    .step-card-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background-color: var(--mud-palette-surface);
+        border-bottom: 1px solid var(--mud-palette-divider);
+    }
+    
+    .drag-handle {
+        cursor: move;
+        color: var(--mud-palette-text-secondary);
+        display: flex;
+        align-items: center;
+    }
+    
+    .drag-handle:hover {
+        color: var(--mud-palette-primary);
+    }
+    
+    .step-order {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: var(--mud-palette-primary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .step-actions {
+        margin-left: auto;
+        display: flex;
+        gap: 4px;
+    }
+    
+    .step-card-body {
+        padding: 16px;
+    }
+    
+    .step-name {
+        cursor: text;
+        padding: 8px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+        margin-bottom: 12px;
+    }
+    
+    .step-name:hover {
+        background-color: var(--mud-palette-action-default-hover);
+    }
+    
+    .placeholder-text {
+        color: var(--mud-palette-text-disabled);
+        font-style: italic;
+    }
+    
+    .step-metadata {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    
+    .step-type-select {
+        min-width: 150px;
+    }
+    
+    .step-card-footer {
+        padding: 12px 16px;
+        background-color: var(--mud-palette-surface);
+        border-top: 1px solid var(--mud-palette-divider);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public PlanStep Step { get; set; } = default!;
+    
+    [Parameter]
+    public List<PlanMember> AvailableMembers { get; set; } = new();
+    
+    [Parameter]
+    public bool CanMoveUp { get; set; }
+    
+    [Parameter]
+    public bool CanMoveDown { get; set; }
+    
+    [Parameter]
+    public bool IsSelected { get; set; }
+    
+    [Parameter]
+    public EventCallback<PlanStep> OnMoveUp { get; set; }
+    
+    [Parameter]
+    public EventCallback<PlanStep> OnMoveDown { get; set; }
+    
+    [Parameter]
+    public EventCallback<PlanStep> OnDelete { get; set; }
+    
+    [Parameter]
+    public EventCallback<PlanStep> OnEditMore { get; set; }
+    
+    [Parameter]
+    public EventCallback<PlanStep> OnSave { get; set; }
+    
+    [Parameter]
+    public EventCallback<PlanStep> OnSelect { get; set; }
+    
+    [Parameter]
+    public EventCallback<PlanStep> OnAddNewMember { get; set; }
+
+    [Parameter]
+    public EventCallback<PlanStep> OnInsertAbove { get; set; }
+
+    [Parameter]
+    public EventCallback<PlanStep> OnInsertBelow { get; set; }
+
+    [Parameter]
+    public bool IsFlashing { get; set; }
+
+    private bool IsEditingName { get; set; }
+    private string? _originalName;
+    private bool _hasInitialized = false;
+
+    protected override void OnParametersSet()
+    {
+        // Auto-focus on new empty steps that are selected
+        if (!_hasInitialized && IsSelected && string.IsNullOrWhiteSpace(Step.Name))
+        {
+            IsEditingName = true;
+            _hasInitialized = true;
+        }
+    }
+
+    private void StartEditingName()
+    {
+        _originalName = Step.Name;
+        IsEditingName = true;
+    }
+    
+    private void SaveStep()
+    {
+        if (string.IsNullOrWhiteSpace(Step.Name))
+        {
+            Step.Name = $"Step {Step.Order}";
+        }
+        IsEditingName = false;
+        OnSave.InvokeAsync(Step);
+    }
+    
+    private void CancelEdit()
+    {
+        if (_originalName != null)
+        {
+            Step.Name = _originalName;
+        }
+        IsEditingName = false;
+    }
+    
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && e.CtrlKey)
+        {
+            SaveStep();
+            await OnInsertAbove.InvokeAsync(Step);
+        }
+        else if (e.Key == "Enter")
+        {
+            SaveStep();
+            await OnInsertBelow.InvokeAsync(Step);
+        }
+        else if (e.Key == "Escape")
+        {
+            CancelEdit();
+        }
+    }
+    
+    private void OnCardClick()
+    {
+        OnSelect.InvokeAsync(Step);
+    }
+    
+    private void OnMembersChanged(IEnumerable<PlanMember> values)
+    {
+        Step.AssignedMembers = values.ToList();
+        StateHasChanged();
+    }
+
+    private string GetCardClass()
+    {
+        var classes = "step-card";
+        if (IsSelected) classes += " selected";
+        if (IsFlashing) classes += " flash";
+        return classes;
+    }
+
+    private async Task HandleMoveUp()
+    {
+        await OnMoveUp.InvokeAsync(Step);
+    }
+
+    private async Task HandleMoveDown()
+    {
+        await OnMoveDown.InvokeAsync(Step);
+    }
+
+    private async Task HandleSaveClick()
+    {
+        SaveStep();
+    }
+
+    private async Task HandleCancelClick()
+    {
+        CancelEdit();
+    }
+
+    private async Task HandleEditMoreClick()
+    {
+        await OnEditMore.InvokeAsync(Step);
+    }
+
+    private async Task HandleDeleteClick()
+    {
+        await OnDelete.InvokeAsync(Step);
+    }
+}

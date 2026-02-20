@@ -1,0 +1,54 @@
+@using StepCue.TenantApp.Data.Models.Planning
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="MemberName"
+                     Label="Member Name"
+                     Variant="Variant.Outlined"
+                     Immediate="true"
+                     OnKeyDown="HandleKeyDown"
+                     AutoFocus="true"
+                     FullWidth="true"
+                     Placeholder="Enter member name..." />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled" 
+                   OnClick="Submit" 
+                   Disabled="@string.IsNullOrWhiteSpace(MemberName)">
+            Add
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public string MemberName { get; set; } = string.Empty;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        if (!string.IsNullOrWhiteSpace(MemberName))
+        {
+            MudDialog.Close(DialogResult.Ok(MemberName));
+        }
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(MemberName))
+        {
+            Submit();
+        }
+        else if (e.Key == "Escape")
+        {
+            Cancel();
+        }
+    }
+}

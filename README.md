@@ -367,105 +367,15 @@ All tests use in-memory database for:
 - Isolation between tests
 - No external dependencies
 
-## 📝 Code Conventions
+## 📝 Development
 
+### Code Conventions
 - **Nullable Reference Types**: Enabled across all projects
 - **Implicit Usings**: Enabled for cleaner code
 - **Async/Await**: Consistent async patterns in service layer
-- **EF Core Best Practices**:
-  - Explicit Include statements for related data
-  - Proper entity tracking management
-  - Transaction management in service layer
 
-## 🛠️ Development Guidelines for AI Assistance
-
-### When Modifying Data Models
-1. Update the model class in `StepCue.TenantApp.Data/Models/`
-2. Update `DataContext.cs` if adding new DbSet
-3. Update related services in `StepCue.TenantApp.Core/Services/`
-4. Update Blazor components that use the model
-5. Add/update corresponding tests
-6. Consider migration impact if moving to persistent database
-
-### When Adding New Features
-1. Start with data model changes in Data project
-2. Implement service logic in Core project
-3. Create/update Blazor components in Web project
-4. Add comprehensive tests in Tests project
-5. Update this README with new functionality
-
-### When Working with Entity Framework
-- Always use `Include()` and `ThenInclude()` for related entities
-- Be cautious with change tracking when updating entities
-- Use `AsNoTracking()` for read-only queries
-- Handle concurrency conflicts appropriately
-
-### When Creating Blazor Components
-- Follow MudBlazor component patterns
-- Use interactive server render mode for dynamic features
-- Leverage existing shared components when possible
-- Maintain consistent styling with MudBlazor theme
-
-### Common Patterns in Codebase
-
-**Service Pattern**:
-```csharp
-public class SomeService
-{
-    private readonly DataContext _context;
-
-    public SomeService(DataContext context)
-    {
-        _context = context;
-    }
-
-    public async Task<Entity> GetEntityAsync(int id)
-    {
-        return await _context.Entities
-            .Include(e => e.RelatedData)
-            .FirstOrDefaultAsync(e => e.Id == id);
-    }
-}
-```
-
-**Update Pattern with Tracking**:
-```csharp
-// Load existing entity with tracking
-var existing = await _context.Entities
-    .Include(e => e.Children)
-    .FirstOrDefaultAsync(e => e.Id == entity.Id);
-
-// Update properties
-existing.Property = newValue;
-
-// Handle collections
-existing.Children.Clear();
-foreach (var child in newChildren)
-{
-    existing.Children.Add(child);
-}
-
-await _context.SaveChangesAsync();
-```
-
-**Blazor Component Pattern**:
-```csharp
-@page "/route"
-@inject ServiceName Service
-
-// Markup with MudBlazor components
-
-@code {
-    [Parameter] public int Id { get; set; }
-
-    private Entity? entity;
-
-    protected override async Task OnInitializedAsync()
-    {
-        entity = await Service.GetEntityAsync(Id);
-    }
-}
-```
+### For Contributors
+Development guidelines and coding patterns are documented in [`.github/copilot-instructions.md`](.github/copilot-instructions.md) for AI-assisted development.
 
 ## 📚 Additional Resources
 
@@ -477,13 +387,15 @@ await _context.SaveChangesAsync();
 
 ## 🤝 Contributing
 
-This README serves as a comprehensive guide for AI-assisted development. When making changes:
+When making changes:
 
 1. Ensure all tests pass
 2. Follow existing code patterns
 3. Update relevant documentation
 4. Maintain backward compatibility when possible
 5. Add tests for new functionality
+
+For detailed coding patterns and conventions, see [`.github/copilot-instructions.md`](.github/copilot-instructions.md).
 
 ## 📄 License
 
