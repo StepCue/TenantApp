@@ -6,6 +6,7 @@ using StepCue.TenantApp.Data.Models.Planning;
 
 namespace StepCue.TenantApp.Data.Models.Execution
 {
+    //represents an instance of a plan being executed, with assigned members, steps, and results
     public class Execution
     {
         [Key]

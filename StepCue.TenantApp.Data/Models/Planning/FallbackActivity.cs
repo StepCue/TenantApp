@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace StepCue.TenantApp.Data.Models.Planning
 {
+    //a step needed to perform a specific fallback activity
     public class FallbackActivity
     {
         [Key]

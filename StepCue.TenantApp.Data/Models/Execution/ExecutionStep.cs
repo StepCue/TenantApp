@@ -35,6 +35,8 @@ namespace StepCue.TenantApp.Data.Models.Execution
         
         // Fallback-related properties
         public bool IsCancelled { get; set; }
+
+        
         
         public int? FallbackOriginStepId { get; set; }
         
