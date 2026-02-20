@@ -281,7 +281,7 @@
                                             
                                             <!-- Fallback button - show for started execution steps that come after steps with fallback definitions -->
                                             @if (!step.IsCancelled && isStarted && !isCompleted && 
-                                                 step.StepType == StepType.Execution && 
+                                                 step.StepType == StepType.Activity && 
                                                  HasAnyPreviousStepWithFallback(step))
                                             {
                                                 <MudButton Variant="Variant.Filled" 

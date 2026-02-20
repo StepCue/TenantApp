@@ -35,7 +35,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
                         Name = "Main Step", 
                         Summary = "Main execution step",
                         Order = 1,
-                        StepType = StepType.Execution,
+                        StepType = StepType.Activity,
                         AssignedMembers = new List<PlanMember>(),
                         FallbackSteps = new List<Fallback>
                         {
@@ -100,7 +100,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
                     { 
                         Name = "Original Step", 
                         Order = 1,
-                        StepType = StepType.Execution,
+                        StepType = StepType.Activity,
                         AssignedMembers = new List<PlanMember>(),
                         FallbackSteps = new List<Fallback>
                         {
@@ -117,7 +117,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
                     { 
                         Name = "Next Step", 
                         Order = 2,
-                        StepType = StepType.Execution,
+                        StepType = StepType.Activity,
                         AssignedMembers = new List<PlanMember>()
                     }
                 }
@@ -154,7 +154,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
             Assert.Single(newSteps);
             Assert.Equal("Recovery Step", newSteps[0].Name);
             Assert.Equal(originalStep.Id, newSteps[0].FallbackOriginStepId);
-            Assert.Equal(StepType.Execution, newSteps[0].StepType); // Fallbacks become execution steps
+            Assert.Equal(StepType.Activity, newSteps[0].StepType); // Fallbacks become execution steps
 
             // Verify remaining steps were cancelled
             var updatedExecution = await _executionService.GetExecutionAsync(execution.Id);
@@ -182,7 +182,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
                     { 
                         Name = "Main Step", 
                         Order = 1,
-                        StepType = StepType.Execution,
+                        StepType = StepType.Activity,
                         AssignedMembers = new List<PlanMember>(),
                         FallbackSteps = new List<Fallback>
                         {
@@ -255,7 +255,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
                     { 
                         Name = "Test Step", 
                         Order = 1,
-                        StepType = StepType.Execution,
+                        StepType = StepType.Activity,
                         AssignedMembers = new List<PlanMember>()
                     }
                 }

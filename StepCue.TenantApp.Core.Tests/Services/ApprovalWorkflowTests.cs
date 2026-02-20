@@ -153,7 +153,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
                     new PlanStep 
                     { 
                         Name = "Deploy Code", 
-                        StepType = StepType.Execution,
+                        StepType = StepType.Activity,
                         Order = 1,
                         AssignedMembers = new List<PlanMember>()
                     },
@@ -177,7 +177,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
             // Act - Create execution from plan
             var execution = await _executionService.CreateExecutionFromPlanAsync(plan.Id);
             
-            var executionStep = execution.Steps.First(s => s.StepType == StepType.Execution);
+            var executionStep = execution.Steps.First(s => s.StepType == StepType.Activity);
             var goNoGoStep = execution.Steps.First(s => s.StepType == StepType.GoNoGo);
             
             // Assert - Neither step is complete initially

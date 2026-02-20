@@ -148,7 +148,7 @@ namespace StepCue.TenantApp.Core.Services
             }
 
             // For regular execution steps, check if CompleteOn is set
-            if (step.StepType == StepType.Execution)
+            if (step.StepType == StepType.Activity)
             {
                 return step.CompleteOn.HasValue;
             }

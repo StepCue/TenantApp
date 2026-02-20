@@ -18,7 +18,7 @@ namespace StepCue.TenantApp.Data.Models.Planning
         
         public byte[]? Screenshot { get; set; }
         
-        public StepType StepType { get; set; } = StepType.Execution;
+        public StepType StepType { get; set; } = StepType.Activity;
         
         public List<PlanMember> AssignedMembers { get; set; } = new();
         public List<Fallback> FallbackSteps { get; set; } = new();

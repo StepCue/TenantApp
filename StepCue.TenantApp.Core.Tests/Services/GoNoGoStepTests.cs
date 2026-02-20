@@ -33,7 +33,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
                         Name = "Regular Execution Step", 
                         Summary = "Regular step",
                         Order = 1,
-                        StepType = StepType.Execution
+                        StepType = StepType.Activity
                     },
                     new PlanStep 
                     { 
@@ -80,7 +80,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
             // Arrange
             var executionStep = new ExecutionStep
             {
-                StepType = StepType.Execution,
+                StepType = StepType.Activity,
                 CompleteOn = DateTime.Now
             };
 
@@ -94,7 +94,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
             // Arrange
             var executionStep = new ExecutionStep
             {
-                StepType = StepType.Execution,
+                StepType = StepType.Activity,
                 CompleteOn = null
             };
 
