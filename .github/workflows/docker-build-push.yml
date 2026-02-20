@@ -3,11 +3,10 @@ name: Build and Push Docker Image
 on:
   push:
     branches:
-      - main
-      - develop
+      - '*'
   pull_request:
     branches:
-      - main
+      - '*'
 
 env:
   DOCKER_REPO: stepcue
