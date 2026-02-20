@@ -687,8 +687,8 @@
     private bool _fallbackDialogVisible = false;
     private ExecutionStep? _fallbackStep;
     private string _fallbackReason = string.Empty;
-    private List<Fallback> _currentFallbackSteps = new();
-    private Dictionary<int, List<Fallback>> _availableFallbackOptions = new();
+    private List<FallbackActivity> _currentFallbackSteps = new();
+    private Dictionary<int, List<FallbackActivity>> _availableFallbackOptions = new();
     private int? _selectedFallbackStepOrder;
     private Dictionary<int, bool> _stepFallbackAvailability = new();
     
@@ -1069,19 +1069,19 @@
     }
     
     // Helper method to load fallback definitions for a step
-    private async Task<List<Fallback>> LoadFallbackStepsAsync(ExecutionStep step)
+    private async Task<List<FallbackActivity>> LoadFallbackStepsAsync(ExecutionStep step)
     {
         if (_execution == null)
-            return new List<Fallback>();
+            return new List<FallbackActivity>();
         
         var planStepOrder = step.PlanStepOrder ?? step.Order;
         return await ExecutionService.GetFallbackStepsAsync(_execution.Id, planStepOrder);
     }
     
     // Helper method to load all available fallback options from previous steps
-    private async Task<Dictionary<int, List<Fallback>>> LoadAllAvailableFallbacksAsync(ExecutionStep currentStep)
+    private async Task<Dictionary<int, List<FallbackActivity>>> LoadAllAvailableFallbacksAsync(ExecutionStep currentStep)
     {
-        var result = new Dictionary<int, List<Fallback>>();
+        var result = new Dictionary<int, List<FallbackActivity>>();
         
         if (_execution == null)
             return result;

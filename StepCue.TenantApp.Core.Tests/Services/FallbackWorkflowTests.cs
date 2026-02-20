@@ -37,9 +37,9 @@ namespace StepCue.TenantApp.Core.Tests.Services
                         Order = 1,
                         StepType = StepType.Activity,
                         AssignedMembers = new List<PlanMember>(),
-                        FallbackSteps = new List<Fallback>
+                        FallbackActivities = new List<FallbackActivity>
                         {
-                            new Fallback
+                            new FallbackActivity
                             {
                                 Name = "Fallback Action",
                                 Summary = "Fallback action to execute",
@@ -53,7 +53,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
 
             // Add members to steps
             plan.Steps[0].AssignedMembers.Add(plan.Members[0]);
-            plan.Steps[0].FallbackSteps[0].AssignedMembers.Add(plan.Members[1]);
+            plan.Steps[0].FallbackActivities[0].AssignedMembers.Add(plan.Members[1]);
 
             Context.Plans.Add(plan);
             await Context.SaveChangesAsync();
@@ -102,9 +102,9 @@ namespace StepCue.TenantApp.Core.Tests.Services
                         Order = 1,
                         StepType = StepType.Activity,
                         AssignedMembers = new List<PlanMember>(),
-                        FallbackSteps = new List<Fallback>
+                        FallbackActivities = new List<FallbackActivity>
                         {
-                            new Fallback
+                            new FallbackActivity
                             {
                                 Name = "Recovery Step",
                                 Summary = "Recovery action",
@@ -126,7 +126,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
             // Add member to all steps and fallbacks
             plan.Steps[0].AssignedMembers.Add(plan.Members[0]);
             plan.Steps[1].AssignedMembers.Add(plan.Members[0]);
-            plan.Steps[0].FallbackSteps[0].AssignedMembers.Add(plan.Members[0]);
+            plan.Steps[0].FallbackActivities[0].AssignedMembers.Add(plan.Members[0]);
 
             Context.Plans.Add(plan);
             await Context.SaveChangesAsync();
@@ -184,9 +184,9 @@ namespace StepCue.TenantApp.Core.Tests.Services
                         Order = 1,
                         StepType = StepType.Activity,
                         AssignedMembers = new List<PlanMember>(),
-                        FallbackSteps = new List<Fallback>
+                        FallbackActivities = new List<FallbackActivity>
                         {
-                            new Fallback
+                            new FallbackActivity
                             {
                                 Name = "Fallback Action",
                                 Summary = "Fallback action requiring multiple approvals",
@@ -199,7 +199,7 @@ namespace StepCue.TenantApp.Core.Tests.Services
             };
 
             // Assign both members to fallback
-            plan.Steps[0].FallbackSteps[0].AssignedMembers.AddRange(plan.Members);
+            plan.Steps[0].FallbackActivities[0].AssignedMembers.AddRange(plan.Members);
 
             Context.Plans.Add(plan);
             await Context.SaveChangesAsync();

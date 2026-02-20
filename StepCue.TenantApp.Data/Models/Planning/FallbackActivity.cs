@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace StepCue.TenantApp.Data.Models.Planning
 {
-    public class Fallback
+    public class FallbackActivity
     {
         [Key]
         public int Id { get; set; }

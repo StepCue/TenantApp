@@ -20,7 +20,7 @@ namespace StepCue.TenantApp.Data
         public DbSet<Plan> Plans { get; set; }
         public DbSet<PlanStep> PlanSteps { get; set; }
         public DbSet<PlanMember> PlanMembers { get; set; }
-        public DbSet<Fallback> Fallbacks { get; set; }
+        public DbSet<FallbackActivity> Fallbacks { get; set; }
         public DbSet<Execution> Executions { get; set; }
         public DbSet<ExecutionStep> ExecutionSteps { get; set; }
         public DbSet<ExecutionMember> ExecutionMembers { get; set; }

@@ -203,9 +203,9 @@
                                                           Color="Color.Primary"
                                                           OnClick="@(() => OpenStepDetailsDialog(context))" 
                                                           Title="More Details" />
-                                            @if (context.FallbackSteps.Any())
+                                            @if (context.FallbackActivities.Any())
                                             {
-                                                <MudTooltip Text="@($"Has {context.FallbackSteps.Count} fallback step(s)")">
+                                                <MudTooltip Text="@($"Has {context.FallbackActivities.Count} fallback step(s)")">
                                                     <MudIcon Icon="@Icons.Material.Filled.Link" Size="Size.Small" Color="Color.Info" />
                                                 </MudTooltip>
                                             }
