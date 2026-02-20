@@ -10,14 +10,20 @@ namespace StepCue.TenantApp.Data.Models.Execution
         [Key]
         public int Id { get; set; }
 
-        public ExecutionStep ExecutionStep { get; set; }
-        
-        public ExecutionMember ExecutionMember { get; set; }
-        
-        public bool IsApproved { get; set; }
-        
+        public int ExecutionStepId { get; set; }
+
+        [ForeignKey("ExecutionStepId")]
+        public ExecutionStep ExecutionStep { get; set; } = default!;
+
+        public int ExecutionMemberId { get; set; }
+
+        [ForeignKey("ExecutionMemberId")]
+        public ExecutionMember ExecutionMember { get; set; } = default!;
+
+        public bool? IsApproved { get; set; }
+
         public DateTime? ApprovalDate { get; set; }
-        
+
         public string Comments { get; set; } = string.Empty;
     }
 }

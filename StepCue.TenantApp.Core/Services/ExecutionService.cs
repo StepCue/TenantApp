@@ -46,6 +46,12 @@ namespace StepCue.TenantApp.Core.Services
             if (plan == null)
                 return null;
 
+            // Validate that plan has at least one Go/No-Go step
+            if (!plan.Steps.Any(s => s.StepType == StepType.GoNoGo))
+            {
+                throw new InvalidOperationException("Plan must have at least one Go/No-Go step before execution can begin.");
+            }
+
             var execution = new Execution
             {
                 Name = $"Execution of {plan.Name}",

@@ -1,0 +1,373 @@
+@using StepCue.TenantApp.Data.Models.Execution
+@using StepCue.TenantApp.Data.Models
+
+<div class="overview-view">
+    @{
+        var milestones = Execution.Steps.Where(s => s.StepType == StepType.GoNoGo).OrderBy(s => s.Order).ToList();
+        
+        foreach (var milestone in milestones)
+        {
+            var activitiesBeforeMilestone = GetActivitiesBeforeMilestone(milestone);
+            var completedCount = activitiesBeforeMilestone.Count(a => a.CompleteOn.HasValue || a.IsCancelled);
+            var totalCount = activitiesBeforeMilestone.Count;
+            var isExpanded = _expandedMilestones.Contains(milestone.Id);
+            var milestoneStatus = GetMilestoneStatus(milestone, activitiesBeforeMilestone);
+            
+            <MudPaper Elevation="2" Class="milestone-card mb-4">
+                <div class="milestone-header" @onclick="@(() => ToggleMilestone(milestone.Id))">
+                    <div class="d-flex align-center gap-3">
+                        <MudIcon 
+                            Icon="@Icons.Material.Filled.EmojiEvents" 
+                            Size="Size.Large"
+                            Color="@GetMilestoneColor(milestoneStatus)" />
+                        <div class="flex-grow-1">
+                            <MudText Typo="Typo.h5">@milestone.Name</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Default">
+                                Milestone @milestone.Order • Activities: @completedCount / @totalCount complete
+                            </MudText>
+                        </div>
+                        <div class="milestone-status">
+                            <MudChip T="string" 
+                                    Color="@GetMilestoneColor(milestoneStatus)"
+                                    Variant="Variant.Filled"
+                                    Size="Size.Large">
+                                @milestoneStatus
+                            </MudChip>
+                        </div>
+                        <MudIconButton 
+                            Icon="@(isExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                            Color="Color.Default" />
+                    </div>
+                </div>
+                
+                <MudCollapse Expanded="@isExpanded">
+                    <div class="milestone-content">
+                        @if (!string.IsNullOrWhiteSpace(milestone.Summary))
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                                @milestone.Summary
+                            </MudAlert>
+                        }
+                        
+                        <MudText Typo="Typo.subtitle1" Class="mb-2">Activities Leading to Milestone</MudText>
+                        
+                        @if (activitiesBeforeMilestone.Any())
+                        {
+                            <div class="activities-grid">
+                                @foreach (var activity in activitiesBeforeMilestone)
+                                {
+                                    var activityComplete = activity.CompleteOn.HasValue || activity.IsCancelled;
+                                    var activityClass = activityComplete ? "activity-item complete" : "activity-item";
+
+                                    <MudPaper 
+                                        Elevation="1" 
+                                        Class="@activityClass"
+                                        @onclick="@(() => OnActivityClick.InvokeAsync(activity))">
+                                        <div class="d-flex align-center gap-2">
+                                            <MudIcon 
+                                                Icon="@(activityComplete ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Circle)" 
+                                                Size="Size.Small"
+                                                Color="@(activityComplete ? Color.Success : Color.Default)" />
+                                            <div class="flex-grow-1">
+                                                <MudText Typo="Typo.body2">
+                                                    <strong>@activity.Order.</strong> @activity.Name
+                                                </MudText>
+                                                @if (activity.PlanStep?.MinutesEffort > 0)
+                                                {
+                                                    <MudText Typo="Typo.caption">
+                                                        @activity.PlanStep.MinutesEffort min
+                                                    </MudText>
+                                                }
+                                            </div>
+                                            @if (activity.AssignedMembers.Any())
+                                            {
+                                                <div class="d-flex gap-1">
+                                                    @foreach (var member in activity.AssignedMembers.Take(3))
+                                                    {
+                                                        <MudAvatar Size="Size.Small" Color="Color.Primary">
+                                                            @GetInitials(member.Name)
+                                                        </MudAvatar>
+                                                    }
+                                                    @if (activity.AssignedMembers.Count > 3)
+                                                    {
+                                                        <MudAvatar Size="Size.Small" Color="Color.Secondary">
+                                                            +@(activity.AssignedMembers.Count - 3)
+                                                        </MudAvatar>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    </MudPaper>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true">
+                                No activities before this milestone.
+                            </MudAlert>
+                        }
+                        
+                        <MudDivider Class="my-3" />
+                        
+                        <MudText Typo="Typo.subtitle1" Class="mb-2">Milestone Approval</MudText>
+                        
+                        @if (milestone.Approvals.Any())
+                        {
+                            <div class="approvals-list mb-3">
+                                @foreach (var approval in milestone.Approvals)
+                                {
+                                    <MudPaper Elevation="0" Class="approval-item pa-2 mb-2">
+                                        <div class="d-flex align-center gap-2">
+                                            <MudAvatar Size="Size.Small" Color="Color.Primary">
+                                                @GetInitials(approval.ExecutionMember.Name)
+                                            </MudAvatar>
+                                            <div class="flex-grow-1">
+                                                <MudText Typo="Typo.body2">@approval.ExecutionMember.Name</MudText>
+                                                @if (approval.IsApproved.HasValue)
+                                                {
+                                                    <MudText Typo="Typo.caption">
+                                                        @(approval.IsApproved.Value ? "Approved" : "Rejected") 
+                                                        @if (approval.ApprovalDate.HasValue)
+                                                        {
+                                                            <text>on @approval.ApprovalDate.Value.ToString("g")</text>
+                                                        }
+                                                    </MudText>
+                                                }
+                                                else
+                                                {
+                                                    <MudText Typo="Typo.caption" Color="Color.Warning">Pending approval</MudText>
+                                                }
+                                            </div>
+                                            <MudIcon 
+                                                Icon="@(approval.IsApproved.HasValue ? (approval.IsApproved.Value ? Icons.Material.Filled.ThumbUp : Icons.Material.Filled.ThumbDown) : Icons.Material.Filled.HourglassEmpty)" 
+                                                Color="@(approval.IsApproved.HasValue ? (approval.IsApproved.Value ? Color.Success : Color.Error) : Color.Default)"
+                                                Size="Size.Medium" />
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(approval.Comments))
+                                        {
+                                            <MudText Typo="Typo.body2" Class="mt-2 ml-6">
+                                                <em>"@approval.Comments"</em>
+                                            </MudText>
+                                        }
+                                    </MudPaper>
+                                }
+                            </div>
+                        }
+                        
+                        @if (CanUserApprove(milestone))
+                        {
+                            <div class="approval-actions">
+                                <MudButton 
+                                    Variant="Variant.Filled" 
+                                    Color="Color.Success"
+                                    StartIcon="@Icons.Material.Filled.ThumbUp"
+                                    OnClick="@(() => OnApprove.InvokeAsync(milestone))"
+                                    Class="mr-2">
+                                    Approve
+                                </MudButton>
+                                <MudButton 
+                                    Variant="Variant.Filled" 
+                                    Color="Color.Error"
+                                    StartIcon="@Icons.Material.Filled.ThumbDown"
+                                    OnClick="@(() => OnReject.InvokeAsync(milestone))">
+                                    Reject
+                                </MudButton>
+                            </div>
+                        }
+                    </div>
+                </MudCollapse>
+            </MudPaper>
+        }
+    }
+</div>
+
+<style>
+    .overview-view {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .milestone-card {
+        border: 2px solid var(--mud-palette-divider);
+        transition: all 0.2s;
+    }
+    
+    .milestone-card:hover {
+        border-color: var(--mud-palette-warning);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .milestone-header {
+        padding: 20px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .milestone-header:hover {
+        background-color: var(--mud-palette-action-default-hover);
+    }
+    
+    .milestone-content {
+        padding: 0 20px 20px 20px;
+        border-top: 1px solid var(--mud-palette-divider);
+        padding-top: 16px;
+    }
+    
+    .activities-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    
+    .activity-item {
+        padding: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid var(--mud-palette-divider);
+    }
+    
+    .activity-item:hover {
+        border-color: var(--mud-palette-primary);
+        transform: translateY(-2px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .activity-item.complete {
+        background-color: var(--mud-palette-success-lighten);
+        opacity: 0.8;
+    }
+    
+    .approval-item {
+        background-color: var(--mud-palette-surface);
+        border: 1px solid var(--mud-palette-divider);
+    }
+    
+    .approval-actions {
+        display: flex;
+        gap: 8px;
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public Execution Execution { get; set; } = default!;
+    
+    [Parameter]
+    public int? CurrentStepId { get; set; }
+    
+    [Parameter]
+    public ExecutionMember? CurrentUser { get; set; }
+    
+    [Parameter]
+    public EventCallback<ExecutionStep> OnActivityClick { get; set; }
+    
+    [Parameter]
+    public EventCallback<ExecutionStep> OnApprove { get; set; }
+    
+    [Parameter]
+    public EventCallback<ExecutionStep> OnReject { get; set; }
+    
+    private HashSet<int> _expandedMilestones = new();
+    
+    protected override void OnInitialized()
+    {
+        // Expand the first incomplete milestone by default
+        var firstIncompleteMilestone = Execution.Steps
+            .Where(s => s.StepType == StepType.GoNoGo && !s.CompleteOn.HasValue)
+            .OrderBy(s => s.Order)
+            .FirstOrDefault();
+
+        if (firstIncompleteMilestone != null)
+        {
+            _expandedMilestones.Add(firstIncompleteMilestone.Id);
+        }
+    }
+    
+    private void ToggleMilestone(int milestoneId)
+    {
+        if (_expandedMilestones.Contains(milestoneId))
+            _expandedMilestones.Remove(milestoneId);
+        else
+            _expandedMilestones.Add(milestoneId);
+    }
+    
+    private List<ExecutionStep> GetActivitiesBeforeMilestone(ExecutionStep milestone)
+    {
+        // Get all activity steps between this milestone and the previous one (or start)
+        var previousMilestone = Execution.Steps
+            .Where(s => s.StepType == StepType.GoNoGo && s.Order < milestone.Order)
+            .OrderByDescending(s => s.Order)
+            .FirstOrDefault();
+        
+        var startOrder = previousMilestone?.Order ?? 0;
+        
+        return Execution.Steps
+            .Where(s => s.StepType == StepType.Activity && s.Order > startOrder && s.Order < milestone.Order)
+            .OrderBy(s => s.Order)
+            .ToList();
+    }
+    
+    private string GetMilestoneStatus(ExecutionStep milestone, List<ExecutionStep> activities)
+    {
+        if (milestone.CompleteOn.HasValue)
+            return "Passed";
+
+        if (milestone.IsCancelled)
+            return "Cancelled";
+
+        var allActivitiesComplete = activities.All(a => a.CompleteOn.HasValue || a.IsCancelled);
+
+        if (allActivitiesComplete && milestone.Approvals.Any())
+        {
+            var allApproved = milestone.Approvals.All(a => a.IsApproved.HasValue);
+            if (allApproved)
+            {
+                var anyRejected = milestone.Approvals.Any(a => a.IsApproved == false);
+                return anyRejected ? "Rejected" : "Ready";
+            }
+            return "Awaiting Approval";
+        }
+
+        if (activities.Any(a => a.StartedOn.HasValue))
+            return "In Progress";
+
+        return "Pending";
+    }
+    
+    private Color GetMilestoneColor(string status)
+    {
+        return status switch
+        {
+            "Passed" => Color.Success,
+            "Ready" => Color.Info,
+            "Awaiting Approval" => Color.Warning,
+            "In Progress" => Color.Primary,
+            "Rejected" => Color.Error,
+            "Cancelled" => Color.Warning,
+            _ => Color.Default
+        };
+    }
+    
+    private bool CanUserApprove(ExecutionStep milestone)
+    {
+        if (CurrentUser == null || !milestone.Approvals.Any())
+            return false;
+        
+        var userApproval = milestone.Approvals.FirstOrDefault(a => a.ExecutionMemberId == CurrentUser.Id);
+        return userApproval != null && !userApproval.IsApproved.HasValue;
+    }
+    
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "?";
+        
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        
+        return name.Substring(0, Math.Min(2, name.Length)).ToUpper();
+    }
+}

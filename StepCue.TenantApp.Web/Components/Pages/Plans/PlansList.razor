@@ -3,8 +3,10 @@
 @using StepCue.TenantApp.Data.Models.Planning
 @using StepCue.TenantApp.Web.Services
 @inject PlanService PlanService
+@inject ExecutionService ExecutionService
 @inject NavigationManager NavigationManager
 @inject IDialogService DialogService
+@inject ISnackbar Snackbar
 @rendermode InteractiveServer
 
 <PageTitle>Plans</PageTitle>
@@ -76,10 +78,21 @@
             "Execute Plan",
             "Are you sure you want to execute this plan? This will create a new execution.",
             yesText: "Execute", cancelText: "Cancel");
-            
+
         if (result == true)
         {
-            NavigationManager.NavigateTo($"/executions/create/{planId}");
+            try
+            {
+                var execution = await ExecutionService.CreateExecutionFromPlanAsync(planId);
+                NavigationManager.NavigateTo($"/executions/{execution.Id}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                await DialogService.ShowMessageBox(
+                    "Cannot Execute Plan",
+                    ex.Message,
+                    yesText: "OK");
+            }
         }
     }
 

@@ -1,0 +1,230 @@
+@using StepCue.TenantApp.Data.Models.Execution
+@using StepCue.TenantApp.Data.Models
+@using StepCue.TenantApp.Core.Services
+@inject ExecutionService ExecutionService
+@inject ISnackbar Snackbar
+
+<div class="technician-view">
+    @foreach (var step in Execution.Steps.OrderBy(s => s.Order))
+    {
+        var isActive = CurrentStepId == step.Id;
+        var isComplete = step.CompleteOn.HasValue || step.IsCancelled;
+        var stepCardClass = GetStepCardClass(step, isActive) + " mb-3";
+
+        <MudPaper Elevation="@(isActive ? 4 : 2)" Class="@stepCardClass">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <div class="d-flex align-center gap-2">
+                        <div class="step-status-indicator @GetStatusClass(step)">
+                            <MudIcon Icon="@GetStepIcon(step)" Size="Size.Small" />
+                        </div>
+                        <div>
+                            <MudText Typo="Typo.h6">Step @step.Order: @step.Name</MudText>
+                            <MudText Typo="Typo.caption">
+                                @GetStepTypeLabel(step.StepType)
+                                @if (step.PlanStep?.MinutesEffort > 0)
+                                {
+                                    <text> • Est. @step.PlanStep.MinutesEffort min</text>
+                                }
+                            </MudText>
+                        </div>
+                    </div>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    @if (!isComplete && isActive)
+                    {
+                        @if (step.StartedOn == null)
+                        {
+                            <MudButton 
+                                Variant="Variant.Filled" 
+                                Color="Color.Primary"
+                                StartIcon="@Icons.Material.Filled.PlayArrow"
+                                OnClick="@(() => OnStartStep.InvokeAsync(step))">
+                                Start
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton 
+                                Variant="Variant.Filled" 
+                                Color="Color.Success"
+                                StartIcon="@Icons.Material.Filled.CheckCircle"
+                                OnClick="@(() => OnCompleteStep.InvokeAsync(step))">
+                                Complete
+                            </MudButton>
+                        }
+                    }
+                    @if (isComplete)
+                    {
+                        <MudChip T="string" 
+                                Color="@(step.IsCancelled ? Color.Warning : Color.Success)" 
+                                Icon="@(step.IsCancelled ? Icons.Material.Filled.Cancel : Icons.Material.Filled.CheckCircle)">
+                            @(step.IsCancelled ? "Cancelled" : "Complete")
+                        </MudChip>
+                    }
+                </CardHeaderActions>
+            </MudCardHeader>
+            
+            @if (isActive || isComplete)
+            {
+                <MudCardContent>
+                    @if (!string.IsNullOrWhiteSpace(step.Summary))
+                    {
+                        <MudText Typo="Typo.body2" Class="mb-3">@step.Summary</MudText>
+                    }
+                    
+                    @if (step.AssignedMembers.Any())
+                    {
+                        <div class="mb-2">
+                            <MudText Typo="Typo.subtitle2" Class="mb-1">Assigned To:</MudText>
+                            <div class="d-flex gap-1 flex-wrap">
+                                @foreach (var member in step.AssignedMembers)
+                                {
+                                    <MudChip T="string" Size="Size.Small">@member.Name</MudChip>
+                                }
+                            </div>
+                        </div>
+                    }
+                    
+                    @if (step.StartedOn.HasValue)
+                    {
+                        <MudText Typo="Typo.caption" Class="mb-1">
+                            <strong>Started:</strong> @step.StartedOn.Value.ToString("g")
+                            @if (step.CompleteOn.HasValue)
+                            {
+                                <text> • <strong>Completed:</strong> @step.CompleteOn.Value.ToString("g")</text>
+                                var duration = (step.CompleteOn.Value - step.StartedOn.Value).TotalMinutes;
+                                <text> • <strong>Duration:</strong> @((int)duration) min</text>
+                            }
+                        </MudText>
+                    }
+                    
+                    @if (step.StepType == StepType.GoNoGo && step.Approvals.Any())
+                    {
+                        <MudDivider Class="my-2" />
+                        <MudText Typo="Typo.subtitle2" Class="mb-1">Approvals</MudText>
+                        @foreach (var approval in step.Approvals)
+                        {
+                            <div class="d-flex align-center gap-2 mb-1">
+                                <MudIcon 
+                                    Icon="@(approval.IsApproved.HasValue ? (approval.IsApproved.Value ? Icons.Material.Filled.ThumbUp : Icons.Material.Filled.ThumbDown) : Icons.Material.Filled.HourglassEmpty)" 
+                                    Size="Size.Small"
+                                    Color="@(approval.IsApproved.HasValue ? (approval.IsApproved.Value ? Color.Success : Color.Error) : Color.Default)" />
+                                <MudText Typo="Typo.body2">
+                                    @approval.ExecutionMember.Name - 
+                                    @(approval.IsApproved.HasValue ? (approval.IsApproved.Value ? "Approved" : "Rejected") : "Pending")
+                                </MudText>
+                            </div>
+                        }
+                    }
+                    
+                    @if (OnExpandDetails.HasDelegate)
+                    {
+                        <MudButton 
+                            Variant="Variant.Text" 
+                            Color="Color.Primary"
+                            StartIcon="@Icons.Material.Filled.MoreHoriz"
+                            Size="Size.Small"
+                            OnClick="@(() => OnExpandDetails.InvokeAsync(step))"
+                            Class="mt-2">
+                            More Details
+                        </MudButton>
+                    }
+                </MudCardContent>
+            }
+        </MudPaper>
+    }
+</div>
+
+<style>
+    .technician-view {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .step-card-active {
+        border-left: 4px solid var(--mud-palette-primary);
+    }
+    
+    .step-card-complete {
+        opacity: 0.7;
+    }
+    
+    .step-status-indicator {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
+    
+    .status-pending {
+        background-color: var(--mud-palette-grey-default);
+    }
+    
+    .status-active {
+        background-color: var(--mud-palette-primary);
+    }
+    
+    .status-complete {
+        background-color: var(--mud-palette-success);
+    }
+    
+    .status-cancelled {
+        background-color: var(--mud-palette-warning);
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public Execution Execution { get; set; } = default!;
+    
+    [Parameter]
+    public int? CurrentStepId { get; set; }
+    
+    [Parameter]
+    public EventCallback<ExecutionStep> OnStartStep { get; set; }
+    
+    [Parameter]
+    public EventCallback<ExecutionStep> OnCompleteStep { get; set; }
+    
+    [Parameter]
+    public EventCallback<ExecutionStep> OnExpandDetails { get; set; }
+    
+    private string GetStepCardClass(ExecutionStep step, bool isActive)
+    {
+        var classes = "";
+        if (isActive) classes += "step-card-active ";
+        if (step.CompleteOn.HasValue || step.IsCancelled) classes += "step-card-complete ";
+        return classes.Trim();
+    }
+
+    private string GetStatusClass(ExecutionStep step)
+    {
+        if (step.IsCancelled)
+            return "status-cancelled";
+        if (step.CompleteOn.HasValue)
+            return "status-complete";
+        if (step.StartedOn.HasValue || CurrentStepId == step.Id)
+            return "status-active";
+        return "status-pending";
+    }
+
+    private string GetStepIcon(ExecutionStep step)
+    {
+        if (step.IsCancelled)
+            return Icons.Material.Filled.Cancel;
+        if (step.CompleteOn.HasValue)
+            return Icons.Material.Filled.CheckCircle;
+        if (step.StartedOn.HasValue || CurrentStepId == step.Id)
+            return Icons.Material.Filled.PlayArrow;
+        return Icons.Material.Filled.Circle;
+    }
+    
+    private string GetStepTypeLabel(StepType stepType)
+    {
+        return stepType == StepType.GoNoGo ? "Go/No-Go Checkpoint" : "Activity";
+    }
+}

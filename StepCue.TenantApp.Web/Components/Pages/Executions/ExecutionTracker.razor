@@ -5,656 +5,98 @@
 @using StepCue.TenantApp.Data.Models.Execution
 @using StepCue.TenantApp.Data.Models.Planning
 @using StepCue.TenantApp.Web.Services
+@using StepCue.TenantApp.Web.Components.Shared
 @inject ExecutionService ExecutionService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @rendermode InteractiveServer
-
-<style>
-    .highlighted-step {
-        background-color: var(--mud-palette-primary-lighten) !important;
-        border: 2px solid var(--mud-palette-primary) !important;
-        border-radius: 8px;
-    }
-    
-    .timeline-container {
-        position: relative;
-        padding-left: 2rem;
-    }
-    
-    .timeline-item {
-        position: relative;
-        margin-bottom: 2rem;
-        display: flex;
-        align-items: flex-start;
-    }
-    
-    .timeline-item.disabled .timeline-content {
-        opacity: 0.6;
-        cursor: not-allowed !important;
-    }
-    
-    .timeline-item.highlighted .timeline-content {
-        border: 2px solid var(--mud-palette-primary) !important;
-        background-color: var(--mud-palette-primary-lighten) !important;
-    }
-    
-    .timeline-item.current .timeline-content {
-        border: 3px solid var(--mud-palette-warning) !important;
-        background-color: var(--mud-palette-warning-lighten) !important;
-        box-shadow: 0 4px 20px rgba(255, 193, 7, 0.2) !important;
-    }
-    
-    .timeline-indicator {
-        position: absolute;
-        left: -2rem;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        z-index: 2;
-    }
-    
-    .timeline-line {
-        width: 2px;
-        height: 3rem;
-        background-color: var(--mud-palette-lines-default);
-        margin-top: 0.5rem;
-    }
-    
-    .timeline-line.completed-line {
-        background-color: var(--mud-palette-success);
-    }
-    
-    .timeline-content {
-        flex: 1;
-        margin-left: 1rem;
-        transition: all 0.2s ease;
-    }
-    
-    .timeline-content:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1) !important;
-    }
-    
-    .timeline-item.disabled .timeline-content:hover {
-        transform: none;
-    }
-    
-    .selected-step {
-        border: 2px solid var(--mud-palette-primary) !important;
-    }
-</style>
 
 <PageTitle>Execution Tracker</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    @if (_execution == null)
-    {
-        <MudProgressCircular Indeterminate="true" />
-    }
-    else
-    {
-        <MudText Typo="Typo.h4" Class="mb-2">@_execution.Name</MudText>
-        <MudText Typo="Typo.subtitle1" Class="mb-4">Based on plan: @_execution.Plan?.Name</MudText>
+@if (_execution == null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <ExecutionTimelineHeader 
+        Execution="@_execution"
+        CurrentStepId="@_currentStep?.Id"
+        OnStepClick="@HandleTimelineStepClick" />
+    
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-2">
+        <MudText Typo="Typo.h4" Class="mb-1">@_execution.Name</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+            Based on plan: @_execution.Plan?.Name
+        </MudText>
         
-        <!-- Horizontal Progress Timeline -->
-        <MudCard Elevation="2" Class="mb-4">
-            <MudCardContent>
-                <MudText Typo="Typo.h6" Class="mb-3">Overall Progress</MudText>
-                <MudProgressLinear Color="Color.Primary" Value="@GetExecutionProgress()" Class="mb-2" />
-                <MudText Typo="Typo.caption">@(_execution.Steps.Count(s => ExecutionService.IsStepComplete(s))) of @_execution.Steps.Count steps completed</MudText>
-                
-                <!-- Horizontal step indicators -->
-                <div class="d-flex justify-center mt-3" style="gap: 8px;">
-                    @for (int i = 0; i < _execution.Steps.Count; i++)
-                    {
-                        var step = _execution.Steps[i];
-                        var stepNumber = i + 1;
-                        var isCompleted = ExecutionService.IsStepComplete(step);
-                        var isStarted = step.StartedOn.HasValue;
-                        var isCurrent = _selectedStep?.Id == step.Id;
-                        
-                        <MudTooltip Text="@step.Name">
-                            <MudButton Variant="@(isCurrent ? Variant.Filled : Variant.Outlined)"
-                                     Color="@(isCompleted ? Color.Success : isStarted ? Color.Info : Color.Default)"
-                                     Size="Size.Small"
-                                     Class="rounded-circle"
-                                     Style="min-width: 40px; height: 40px;"
-                                     OnClick="@(() => SelectStep(step))">
-                                @if (isCompleted)
-                                {
-                                    <MudIcon Icon="@Icons.Material.Filled.Check" />
-                                }
-                                else
-                                {
-                                    @stepNumber
-                                }
-                            </MudButton>
-                        </MudTooltip>
-                    }
-                </div>
-            </MudCardContent>
-        </MudCard>
-
-        <!-- Vertical Timeline -->
-        <MudGrid>
-            <MudItem xs="12" md="8">
-                <div class="timeline-container">
-                    @for (int i = 0; i < _execution.Steps.Count; i++)
-                    {
-                        var step = _execution.Steps[i];
-                        var isLast = i == _execution.Steps.Count - 1;
-                        var isCompleted = ExecutionService.IsStepComplete(step);
-                        var isStarted = step.StartedOn.HasValue;
-                        var canStart = CanStartStep(step);
-                        var isHighlighted = IsStepHighlighted(step);
-                        var isCurrent = IsCurrentStep(step);
-                        var shouldShow = _selectedMemberToHighlight == null || isHighlighted;
-                        
-                        @if (shouldShow)
-                        {
-                        <div class="timeline-item @(isCompleted ? "completed" : isStarted ? "started" : !canStart ? "disabled" : "") @(isHighlighted ? "highlighted" : "") @(isCurrent ? "current" : "")">
-                            <!-- Timeline indicator -->
-                            <div class="timeline-indicator">
-                                <MudIcon Icon="@GetStepIcon(step)" 
-                                       Color="@GetStepColor(step)" 
-                                       Size="Size.Large" />
-                                @if (!isLast)
-                                {
-                                    <div class="timeline-line @(isCompleted ? "completed-line" : "")"></div>
-                                }
-                            </div>
-                            
-                            <!-- Timeline content -->
-                            <MudCard Elevation="2" 
-                                   Class="@($"timeline-content ma-2 {(step.Id == _selectedStep?.Id ? "selected-step" : "")}")"
-                                   @onclick="@(() => OpenStepDialog(step))"
-                                   Style="cursor: pointer;">
-                                <MudCardContent>
-                                    <div class="d-flex justify-space-between align-center mb-2">
-                                        <div class="d-flex align-center" style="gap: 8px;">
-                                            <MudText Typo="Typo.h6">@step.Name</MudText>
-                                            @if (step.StepType == StepType.GoNoGo)
-                                            {
-                                                @if (step.FallbackOriginStepId.HasValue)
-                                                {
-                                                    <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Outlined">Fallback Approval</MudChip>
-                                                }
-                                                else
-                                                {
-                                                    <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="Variant.Outlined">Go/NoGo</MudChip>
-                                                }
-                                            }
-                                        </div>
-                                        <div>
-                                            @if (step.IsCancelled)
-                                            {
-                                                <MudChip T="string" Color="Color.Dark" Size="Size.Small">Cancelled</MudChip>
-                                            }
-                                            else if (isStarted && !isCompleted)
-                                            {
-                                                <MudChip T="string" Color="Color.Info" Size="Size.Small">@GetTimeSinceStarted(step)</MudChip>
-                                            }
-                                            else if (isCompleted)
-                                            {
-                                                <MudChip T="string" Color="Color.Success" Size="Size.Small">Completed</MudChip>
-                                            }
-                                            else if (!canStart)
-                                            {
-                                                <MudChip T="string" Color="Color.Default" Size="Size.Small">Waiting</MudChip>
-                                            }
-                                        </div>
-                                    </div>
-                                    
-                                    @if (!string.IsNullOrEmpty(step.Summary))
-                                    {
-                                        <MudText Typo="Typo.body2" Class="mb-2">@step.Summary</MudText>
-                                    }
-                                    
-                                    @if (step.AssignedMembers != null && step.AssignedMembers.Any())
-                                    {
-                                        <div class="d-flex flex-wrap gap-1 mb-2">
-                                            <MudText Typo="Typo.caption" Class="align-self-center mr-2">Assigned to:</MudText>
-                                            @foreach (var member in step.AssignedMembers)
-                                            {
-                                                <MudChip T="string" Color="Color.Secondary" Size="Size.Small">@member.Name</MudChip>
-                                            }
-                                        </div>
-                                    }
-                                    
-                                    @if (step.Screenshot != null && step.Screenshot.Length > 0)
-                                    {
-                                        <MudText Typo="Typo.caption" Class="d-block">📷 Screenshot available</MudText>
-                                    }
-                                    
-                                    <div class="d-flex justify-space-between align-center mt-3">
-                                        <div>
-                                            @if (isCompleted)
-                                            {
-                                                <MudText Typo="Typo.caption">Completed on @step.CompleteOn.Value.ToShortDateString()</MudText>
-                                            }
-                                            else if (isStarted)
-                                            {
-                                                <MudText Typo="Typo.caption">Started on @step.StartedOn.Value.ToShortDateString()</MudText>
-                                            }
-                                            else
-                                            {
-                                                <MudText Typo="Typo.caption">Not started</MudText>
-                                            }
-                                        </div>
-                                        
-                                        <div class="d-flex gap-2 align-center">
-                                            <!-- Don't show action buttons for cancelled steps -->
-                                            @if (!step.IsCancelled && !isCompleted && canStart)
-                                            {
-                                                @if (step.StepType == StepType.GoNoGo)
-                                                {
-                                                    <MudButton Variant="Variant.Filled" 
-                                                             Color="@(step.FallbackOriginStepId.HasValue ? Color.Error : Color.Warning)" 
-                                                             Size="Size.Small"
-                                                             OnClick="@(async () => await OpenStepApprovalDialog(step))"
-                                                             onclick:stopPropagation="true">
-                                                        @(step.FallbackOriginStepId.HasValue ? "Approve Fallback" : "Approve")
-                                                    </MudButton>
-                                                }
-                                                else if (!isStarted)
-                                                {
-                                                    <MudButton Variant="Variant.Filled" 
-                                                             Color="Color.Primary" 
-                                                             Size="Size.Small"
-                                                             OnClick="@(async () => await StartStepInternal(step))"
-                                                             onclick:stopPropagation="true">
-                                                        Start
-                                                    </MudButton>
-                                                }
-                                                else
-                                                {
-                                                    <MudButton Variant="Variant.Filled" 
-                                                             Color="Color.Success" 
-                                                             Size="Size.Small"
-                                                             OnClick="@(() => OpenStepCompletionDialog(step))"
-                                                             onclick:stopPropagation="true">
-                                                        Complete
-                                                    </MudButton>
-                                                }
-                                            }
-                                            
-                                            <!-- Fallback button - show for started execution steps that come after steps with fallback definitions -->
-                                            @if (!step.IsCancelled && isStarted && !isCompleted && 
-                                                 step.StepType == StepType.Activity && 
-                                                 HasAnyPreviousStepWithFallback(step))
-                                            {
-                                                <MudButton Variant="Variant.Filled" 
-                                                         Color="Color.Error" 
-                                                         Size="Size.Small"
-                                                         OnClick="@(() => OpenFallbackDialog(step))"
-                                                         onclick:stopPropagation="true">
-                                                    Fallback
-                                                </MudButton>
-                                            }
-                                        </div>
-                                        
-                                        @if (step.IsCancelled)
-                                        {
-                                            <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">Cancelled due to fallback</MudText>
-                                        }
-                                        else
-                                        {
-                                            <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">Click for details</MudText>
-                                        }
-                                    </div>
-                                </MudCardContent>
-                            </MudCard>
-                        </div>
-                        }
-                    }
-                    
-                    @if (_selectedMemberToHighlight != null && !_execution.Steps.Any(s => IsStepHighlighted(s)))
-                    {
-                        <div class="text-center pa-4">
-                            <MudText Typo="Typo.caption" Style="font-style: italic;">No steps assigned to this member</MudText>
-                        </div>
-                    }
-                </div>
-            </MudItem>
+        <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" 
+                 ActivePanelIndex="@_activeTabIndex" 
+                 ActivePanelIndexChanged="@((int index) => _activeTabIndex = index)"
+                 Class="mb-3">
+            <MudTabPanel Text="Technician View" Icon="@Icons.Material.Filled.Engineering">
+                <TechnicianView 
+                    Execution="@_execution"
+                    CurrentStepId="@_currentStep?.Id"
+                    OnStartStep="@StartStep"
+                    OnCompleteStep="@CompleteStep"
+                    OnExpandDetails="@OpenStepDetailsDialog" />
+            </MudTabPanel>
             
-            <MudItem xs="12" md="4">
-                <MudPaper Class="pa-4" Elevation="2">
-                    <MudText Typo="Typo.h6" Class="mb-2">Team Members</MudText>
-                    @foreach (var member in _execution.Members)
-                    {
-                        <MudChip T="String" Color="Color.Primary" Class="ma-1">@member.Name</MudChip>
-                    }
-                </MudPaper>
+            <MudTabPanel Text="Overview" Icon="@Icons.Material.Filled.Dashboard">
+                <OverviewView 
+                    Execution="@_execution"
+                    CurrentStepId="@_currentStep?.Id"
+                    CurrentUser="@_currentUser"
+                    OnActivityClick="@OpenStepDetailsDialog"
+                    OnApprove="@ApproveGoNoGo"
+                    OnReject="@RejectGoNoGo" />
+            </MudTabPanel>
+        </MudTabs>
+    </MudContainer>
+    
+    @* Step Details Dialog *@
+    <MudDialog @bind-Visible="_detailsDialogVisible" Options="_dialogOptions">
+        <TitleContent>
+            <MudText Typo="Typo.h6">Step @_detailsStep?.Order: @_detailsStep?.Name</MudText>
+        </TitleContent>
+        <DialogContent>
+            @if (_detailsStep != null)
+            {
+                <MudTextField 
+                    @bind-Value="_detailsStep.ResultSummary"
+                    Label="Result Summary"
+                    Lines="3"
+                    Variant="Variant.Outlined"
+                    Class="mb-3" />
                 
-                @if (_execution.Members.Any())
-                {
-                    <MudPaper Class="pa-4 mt-3" Elevation="2">
-                        <MudText Typo="Typo.h6" Class="mb-2">Filter by Member</MudText>
-                        <MudSelect T="ExecutionMember" @bind-Value="_selectedMemberToHighlight" 
-                                   Label="Highlight steps for member" 
-                                   Variant="Variant.Outlined" 
-                                   Clearable="true"
-                                   ToStringFunc="@(m => string.IsNullOrEmpty(m?.Name) ? "Unnamed Member" : m.Name)">
-                            @foreach (var member in _execution.Members)
-                            {
-                                var memberName = string.IsNullOrEmpty(member.Name) ? "Unnamed Member" : member.Name;
-                                <MudSelectItem T="ExecutionMember" Value="@member">@memberName</MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudPaper>
-                }
-            </MudItem>
-        </MudGrid>
-    }
-</MudContainer>
-
-<!-- Step Details Dialog -->
-<MudDialog @bind-Visible="_stepDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Large, FullWidth = true })">
-    <TitleContent>
-        <MudText Typo="Typo.h5">@_dialogStep?.Name</MudText>
-    </TitleContent>
-    <DialogContent>
-        @if (_dialogStep != null)
-        {
-            <MudGrid>
-                <MudItem xs="12" md="6">
-                    <MudCard Elevation="1" Class="mb-4">
-                        <MudCardHeader>
-                            <CardHeaderContent>
-                                <MudText Typo="Typo.h6">Plan Details</MudText>
-                            </CardHeaderContent>
-                        </MudCardHeader>
-                        <MudCardContent>
-                            <MudText>@_dialogStep.Summary</MudText>
-                            
-                            @if (_dialogStep.AssignedMembers != null && _dialogStep.AssignedMembers.Any())
-                            {
-                                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2">Assigned Members:</MudText>
-                                <div class="d-flex flex-wrap gap-1">
-                                    @foreach (var member in _dialogStep.AssignedMembers)
-                                    {
-                                        <MudChip T="string" Color="Color.Secondary" Size="Size.Small">@member.Name</MudChip>
-                                    }
-                                </div>
-                            }
-                            
-                            @if (_dialogStep.Screenshot != null && _dialogStep.Screenshot.Length > 0)
-                            {
-                   @*              <MudImage Src="@_fileService.GetImageDataUrl(_dialogStep.Screenshot)" 
-                                        Alt="Plan screenshot" 
-                                        Class="mt-4"
-                                        Width="100%" 
-                                        ObjectFit="ObjectFit.Cover" /> *@
-                            }
-                        </MudCardContent>
-                    </MudCard>
-                    
-                    @if (!_dialogStep.CompleteOn.HasValue)
-                    {
-                        <MudCard Elevation="1">
-                            <MudCardHeader>
-                                <CardHeaderContent>
-                                    <MudText Typo="Typo.h6">Update Status</MudText>
-                                </CardHeaderContent>
-                            </MudCardHeader>
-                            <MudCardContent>
-                                @if (!_dialogStep.StartedOn.HasValue)
-                                {
-                                    <MudButton Variant="Variant.Filled" 
-                                             Color="Color.Primary" 
-                                             FullWidth="true"
-                                             Disabled="@(!CanStartStep(_dialogStep))"
-                                             OnClick="@StartDialogStep">
-                                        @(CanStartStep(_dialogStep) ? "Start Step" : "Complete previous steps first")
-                                    </MudButton>
-                                }
-                                else
-                                {
-                                    <MudTextField @bind-Value="_dialogStep.ResultSummary"
-                                                Label="Result Summary" 
-                                                Lines="3" 
-                                                Class="mb-3" />
-                                    
-                                    <MudText Class="mb-2">Upload Result Screenshot</MudText>
-                                    <ScreenshotUploader @bind-ImageData="_dialogStep.ResultScreenshot" />
-                                    
-                                    <MudButton Variant="Variant.Filled" 
-                                             Color="Color.Success" 
-                                             FullWidth="true"
-                                             OnClick="@CompleteDialogStep"
-                                             Class="mt-3">
-                                        Mark as Complete
-                                    </MudButton>
-                                }
-                            </MudCardContent>
-                        </MudCard>
-                    }
-                    else
-                    {
-                        <MudCard Elevation="1">
-                            <MudCardHeader>
-                                <CardHeaderContent>
-                                    <MudText Typo="Typo.h6">Result</MudText>
-                                </CardHeaderContent>
-                            </MudCardHeader>
-                            <MudCardContent>
-                                <MudText>@_dialogStep.ResultSummary</MudText>
-                                
-                                @if (_dialogStep.ResultScreenshot != null && _dialogStep.ResultScreenshot.Length > 0)
-                                {
-                              @*       <MudImage Src="@_fileService.GetImageDataUrl(_dialogStep.ResultScreenshot)" 
-                                            Alt="Result screenshot" 
-                                            Class="mt-4"
-                                            Width="100%" 
-                                            ObjectFit="ObjectFit.Cover" /> *@
-                                }
-                            </MudCardContent>
-                        </MudCard>
-                    }
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <StepDiscussion Step="@_dialogStep" />
-                </MudItem>
-            </MudGrid>
-        }
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="CloseStepDialog">Close</MudButton>
-    </DialogActions>
-</MudDialog>
-
-<!-- Step Completion Dialog -->
-<MudDialog @bind-Visible="_completionDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Medium, FullWidth = true })">
-    <TitleContent>
-        <MudText Typo="Typo.h5">Complete Step: @_completionStep?.Name</MudText>
-    </TitleContent>
-    <DialogContent>
-        @if (_completionStep != null)
-        {
-            <MudGrid>
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="_completionResultSummary"
-                                Label="Results of the change" 
-                                Lines="3" 
-                                Class="mb-3"
-                                Required="true"
-                                HelperText="Describe what was accomplished in this step" />
-                    
-                    <MudTextField @bind-Value="_completionWentWell"
-                                Label="What went well" 
-                                Lines="3" 
-                                Class="mb-3"
-                                HelperText="Highlight positive aspects and successes" />
-                    
-                    <MudTextField @bind-Value="_completionCouldBeBetter"
-                                Label="What could be better" 
-                                Lines="3" 
-                                Class="mb-3"
-                                HelperText="Note areas for improvement or challenges faced" />
-                    
-                    <MudText Class="mb-2">Screenshot Evidence</MudText>
-                    <ScreenshotUploader @bind-ImageData="_completionScreenshot" />
-                </MudItem>
-            </MudGrid>
-        }
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="CloseCompletionDialog">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" 
-                 Color="Color.Success" 
-                 OnClick="SubmitStepCompletion"
-                 Disabled="@(string.IsNullOrWhiteSpace(_completionResultSummary))">
-            Complete Step
-        </MudButton>
-    </DialogActions>
-</MudDialog>
-
-<!-- Step Approval Dialog -->
-<MudDialog @bind-Visible="_approvalDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Medium, FullWidth = true })">
-    <TitleContent>
-        <MudText Typo="Typo.h5">Approve Step: @_approvalStep?.Name</MudText>
-    </TitleContent>
-    <DialogContent>
-        @if (_approvalStep != null)
-        {
-            <MudGrid>
-                <MudItem xs="12">
-                    <MudText Typo="Typo.body2" Class="mb-3">
-                        This is a go/nogo step that requires approval from all assigned team members before it can be considered complete.
-                    </MudText>
-                    
-                    @if (_currentApproval != null)
-                    {
-                        <MudTextField @bind-Value="_currentApproval.Comments"
-                                    Label="Approval Comments" 
-                                    Lines="3" 
-                                    Class="mb-3"
-                                    Required="true"
-                                    HelperText="Please provide comments for your approval decision" />
-                    }
-                                
-                @*     @if (_approvalStep.AssignedMembers != null && _approvalStep.AssignedMembers.Any())
-                    {
-                        <MudText Typo="Typo.subtitle2" Class="mb-2">Select your role for this approval:</MudText>
-                        <MudSelect T="PlanMember" Value="_selectedApprover" 
-                                   Label="Approving as" 
-                                   Variant="Variant.Outlined" 
-                                   Required="true"
-                                   ToStringFunc="@(m => string.IsNullOrEmpty(m?.Name) ? "Unnamed Member" : m.Name)"
-                                   ValueChanged="OnApproverChanged">
-                            @foreach (var member in _approvalStep.AssignedMembers)
-                            {
-                                var memberName = string.IsNullOrEmpty(member.Name) ? "Unnamed Member" : member.Name;
-                                <MudSelectItem T="PlanMember" Value="@member">@memberName</MudSelectItem>
-                            }
-                        </MudSelect>
-                    } *@
-                </MudItem>
-            </MudGrid>
-        }
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="CloseApprovalDialog">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" 
-                 Color="Color.Warning" 
-                 OnClick="SubmitStepApproval"
-                 Disabled="@(_selectedApprover == null || string.IsNullOrWhiteSpace(_currentApproval?.Comments))">
-            Approve
-        </MudButton>
-    </DialogActions>
-</MudDialog>
-
-<!-- Fallback Dialog -->
-<MudDialog @bind-Visible="_fallbackDialogVisible" Options="@(new DialogOptions() { MaxWidth = MaxWidth.Large, FullWidth = true })">
-    <TitleContent>
-        <MudText Typo="Typo.h5">Fallback Step</MudText>
-    </TitleContent>
-    <DialogContent>
-        @if (_fallbackStep != null)
-        {
-            <MudText Typo="Typo.h6" Class="mb-4">
-                Requesting fallback from: @_fallbackStep.Name
-            </MudText>
-
-            @if (_availableFallbackOptions.Any())
-            {
-                @if (_availableFallbackOptions.Count > 1)
-                {
-                    <MudText Typo="Typo.subtitle2" Class="mb-2">Select which step to fallback to:</MudText>
-                    <MudSelect T="int?" Value="_selectedFallbackStepOrder" 
-                               Label="Fallback to step" 
-                               Variant="Variant.Outlined" 
-                               Class="mb-4"
-                               ValueChanged="OnFallbackStepSelectionChanged">
-                        @foreach (var option in _availableFallbackOptions.OrderByDescending(kvp => kvp.Key))
-                        {
-                            var stepName = _execution?.Steps?.FirstOrDefault(s => s.Order == option.Key)?.Name ?? $"Step {option.Key}";
-                            <MudSelectItem T="int?" Value="option.Key">@stepName (Step @option.Key)</MudSelectItem>
-                        }
-                    </MudSelect>
-                }
-
-                @if (_currentFallbackSteps.Any())
-                {
-                    <MudText Typo="Typo.subtitle2" Class="mb-2">Fallback Steps that will be executed:</MudText>
-                    <MudList T="string" Dense="true" Class="mb-4">
-                        @foreach (var fallbackStep in _currentFallbackSteps.OrderBy(s => s.Order))
-                        {
-                            <MudListItem T="string" Class="d-flex align-center">
-                                <MudIcon Icon="@Icons.Material.Filled.ArrowRight" Size="Size.Small" Class="mr-2" />
-                                <div>
-                                    <MudText Typo="Typo.body1">@fallbackStep.Name</MudText>
-                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                                        Assigned to: @string.Join(", ", fallbackStep.AssignedMembers.Select(m => m.Name))
-                                    </MudText>
-                                </div>
-                            </MudListItem>
-                        }
-                    </MudList>
-
-                    <MudText Typo="Typo.subtitle2" Class="mb-2">Reason for Fallback (Required):</MudText>
-                    <MudTextField @bind-Value="_fallbackReason" 
-                                 Label="Fallback Reason" 
-                                 Lines="3" 
-                                 Required="true"
-                                 Class="mb-4"
-                                 Placeholder="Explain why fallback is necessary..." />
-
-                    <MudAlert Severity="Severity.Warning" Class="mb-3">
-                        This action will:
-                        <ul>
-                            <li>Create an approval step requiring approval from all affected team members</li>
-                            <li>If approved, insert the fallback steps and cancel remaining steps</li>
-                            <li>If denied, continue with normal execution</li>
-                        </ul>
-                    </MudAlert>
-                }
-                else if (_availableFallbackOptions.Count > 1)
-                {
-                    <MudAlert Severity="Severity.Info" Class="mb-4">
-                        Please select a step to see the fallback options.
-                    </MudAlert>
-                }
+                <MudTextField 
+                    @bind-Value="_detailsStep.WhatWentWell"
+                    Label="What Went Well"
+                    Lines="3"
+                    Variant="Variant.Outlined"
+                    Class="mb-3" />
+                
+                <MudTextField 
+                    @bind-Value="_detailsStep.WhatCouldBeBetter"
+                    Label="What Could Be Better"
+                    Lines="3"
+                    Variant="Variant.Outlined"
+                    Class="mb-3" />
+                
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Screenshot</MudText>
+                <ScreenshotUploader @bind-ImageData="_detailsStep.ResultScreenshot" />
             }
-            else
-            {
-                <MudAlert Severity="Severity.Info" Class="mb-4">
-                    No fallback steps are available from previous steps.
-                </MudAlert>
-            }
-        }
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="CloseFallbackDialog">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" 
-                 Color="Color.Warning" 
-                 OnClick="SubmitFallback"
-                 Disabled="@(string.IsNullOrWhiteSpace(_fallbackReason) || !_currentFallbackSteps.Any() || !_selectedFallbackStepOrder.HasValue)">
-            Request Fallback Approval
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="CloseDetailsDialog">Cancel</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveStepDetails">
+                Save
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+}
 
 @code {
     [Parameter]
@@ -663,530 +105,205 @@
     [Parameter]
     public int? PlanId { get; set; }
     
-    private Execution _execution;
-    private ExecutionStep _selectedStep;
-    private ExecutionMember? _selectedMemberToHighlight;
-    private bool _stepDialogVisible = false;
-    private ExecutionStep _dialogStep;
+    private Execution? _execution;
+    private ExecutionStep? _currentStep;
+    private ExecutionMember? _currentUser;
+    private int _activeTabIndex = 0;
     
-    // Completion dialog fields
-    private bool _completionDialogVisible = false;
-    private ExecutionStep _completionStep;
-    private string _completionResultSummary = string.Empty;
-    private string _completionWentWell = string.Empty;
-    private string _completionCouldBeBetter = string.Empty;
-    private byte[]? _completionScreenshot;
+    // Details dialog
+    private bool _detailsDialogVisible = false;
+    private ExecutionStep? _detailsStep;
     
-    // Approval dialog fields
-    private bool _approvalDialogVisible = false;
-    private ExecutionStep? _approvalStep;
-    private PlanMember? _selectedApprover;
-    private ExecutionStepApproval? _currentApproval;
-    
-    // Fallback dialog fields
-    private bool _fallbackDialogVisible = false;
-    private ExecutionStep? _fallbackStep;
-    private string _fallbackReason = string.Empty;
-    private List<FallbackActivity> _currentFallbackSteps = new();
-    private Dictionary<int, List<FallbackActivity>> _availableFallbackOptions = new();
-    private int? _selectedFallbackStepOrder;
-    private Dictionary<int, bool> _stepFallbackAvailability = new();
-    
-    [Inject] 
-    private FileService? _fileService { get; set; }
+    private DialogOptions _dialogOptions = new() 
+    { 
+        MaxWidth = MaxWidth.Large, 
+        FullWidth = true,
+        CloseButton = true
+    };
     
     protected override async Task OnInitializedAsync()
     {
-        if (PlanId.HasValue)
+        try
         {
-            // Creating a new execution from plan
-            _execution = await ExecutionService.CreateExecutionFromPlanAsync(PlanId.Value);
-            if (_execution != null)
+            if (PlanId.HasValue)
             {
-                Id = _execution.Id;
-                NavigationManager.NavigateTo($"/executions/{Id}", replace: true);
-                // Load fallback availability for the new execution
-                await LoadFallbackAvailabilityAsync();
+                _execution = await ExecutionService.CreateExecutionFromPlanAsync(PlanId.Value);
+                if (_execution != null)
+                {
+                    Id = _execution.Id;
+                    NavigationManager.NavigateTo($"/executions/{Id}", replace: true);
+                }
+                else
+                {
+                    NavigationManager.NavigateTo("/plans");
+                    Snackbar.Add("Failed to create execution", Severity.Error);
+                    return;
+                }
             }
-            else
+            else if (Id.HasValue)
             {
-                NavigationManager.NavigateTo("/plans");
-                Snackbar.Add("Failed to create execution. Plan not found.", Severity.Error);
-            }
-        }
-        else if (Id.HasValue)
-        {
-            // Loading existing execution
-            _execution = await ExecutionService.GetExecutionAsync(Id.Value);
-            if (_execution == null)
-            {
-                NavigationManager.NavigateTo("/executions");
-                Snackbar.Add("Execution not found", Severity.Error);
-            }
-            else
-            {
-                // Load fallback availability for the existing execution
-                await LoadFallbackAvailabilityAsync();
+                _execution = await ExecutionService.GetExecutionAsync(Id.Value);
+                if (_execution == null)
+                {
+                    NavigationManager.NavigateTo("/executions");
+                    Snackbar.Add("Execution not found", Severity.Error);
+                    return;
+                }
             }
             
-            if (_execution?.Steps.Count > 0)
+            if (_execution != null)
             {
-                // Select first incomplete step, or the last step if all are complete
-                _selectedStep = _execution.Steps.FirstOrDefault(s => !ExecutionService.IsStepComplete(s)) ?? 
-                               _execution.Steps.Last();
+                InitializeView();
             }
         }
-    }
-    
-    private void SelectStep(ExecutionStep step)
-    {
-        _selectedStep = step;
-    }
-    
-    private void OpenStepDialog(ExecutionStep step)
-    {
-        _dialogStep = step;
-        _stepDialogVisible = true;
-    }
-    
-    private void CloseStepDialog()
-    {
-        _stepDialogVisible = false;
-    }
-    
-    private string GetTimeSinceStarted(ExecutionStep step)
-    {
-        if (!step.StartedOn.HasValue) return "";
-        
-        var timeSpan = DateTime.Now - step.StartedOn.Value;
-        
-        if (timeSpan.TotalDays >= 1)
-            return $"{(int)timeSpan.TotalDays} day(s) ago";
-        if (timeSpan.TotalHours >= 1)
-            return $"{(int)timeSpan.TotalHours} hour(s) ago";
-        if (timeSpan.TotalMinutes >= 1)
-            return $"{(int)timeSpan.TotalMinutes} minute(s) ago";
-        
-        return "Just started";
-    }
-    
-    private double GetExecutionProgress()
-    {
-        if (_execution?.Steps == null || !_execution.Steps.Any()) return 0;
-        
-        var completedSteps = _execution.Steps.Count(s => ExecutionService.IsStepComplete(s));
-        return (double)completedSteps / _execution.Steps.Count * 100;
-    }
-    
-    private async Task StartStep()
-    {
-        await StartStepInternal(_selectedStep);
-    }
-    
-    private async Task StartDialogStep()
-    {
-        await StartStepInternal(_dialogStep);
-    }
-    
-    private async Task StartStepInternal(ExecutionStep step)
-    {
-        if (!CanStartStep(step))
+        catch (InvalidOperationException ex)
         {
-            Snackbar.Add("Cannot start this step. Previous steps must be completed first.", Severity.Warning);
-            return;
+            Snackbar.Add(ex.Message, Severity.Error);
+            NavigationManager.NavigateTo("/plans");
         }
-        
+    }
+    
+    private void InitializeView()
+    {
+        // Find current step (first incomplete step)
+        _currentStep = _execution!.Steps
+            .OrderBy(s => s.Order)
+            .FirstOrDefault(s => !s.CompleteOn.HasValue && !s.IsCancelled);
+
+        if (_currentStep == null)
+        {
+            _currentStep = _execution.Steps.OrderBy(s => s.Order).LastOrDefault();
+        }
+
+        // Simulate current user (first member for demo)
+        _currentUser = _execution.Members.FirstOrDefault();
+
+        // Determine default tab based on whether user is assigned to any activity steps
+        var isAssignedToActivities = _execution.Steps
+            .Any(s => s.StepType == StepType.Activity && 
+                     s.AssignedMembers.Any(m => m.Id == _currentUser?.Id));
+
+        _activeTabIndex = isAssignedToActivities ? 0 : 1; // 0 = Technician, 1 = Overview
+    }
+    
+    private async Task HandleTimelineStepClick(ExecutionStep step)
+    {
+        _currentStep = step;
+        StateHasChanged();
+    }
+    
+    private async Task StartStep(ExecutionStep step)
+    {
         step.StartedOn = DateTime.Now;
         await ExecutionService.UpdateExecutionStepAsync(step);
-        Snackbar.Add("Step started", Severity.Info);
+        _currentStep = step;
+        Snackbar.Add($"Step {step.Order} started", Severity.Info);
+        StateHasChanged();
     }
     
-    private async Task CompleteStep()
-    {
-        await CompleteStepInternal(_selectedStep);
-    }
-    
-    private async Task CompleteDialogStep()
-    {
-        await CompleteStepInternal(_dialogStep);
-    }
-    
-    private async Task CompleteStepInternal(ExecutionStep step)
+    private async Task CompleteStep(ExecutionStep step)
     {
         step.CompleteOn = DateTime.Now;
         await ExecutionService.UpdateExecutionStepAsync(step);
-        Snackbar.Add("Step completed", Severity.Success);
-        
-        // Select next incomplete step if available and we're working with the main selected step
-        if (step == _selectedStep)
-        {
-            var nextStep = _execution.Steps
-                .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != step.Id)
-                .OrderBy(s => s.Order)
-                .FirstOrDefault();
-                
-            if (nextStep != null)
-            {
-                _selectedStep = nextStep;
-            }
-        }
-    }
-    
-    private string GetStepIcon(ExecutionStep step)
-    {
-        if (ExecutionService.IsStepComplete(step))
-            return Icons.Material.Filled.CheckCircle;
-        if (step.StartedOn.HasValue)
-            return Icons.Material.Filled.PlayCircle;
-        return Icons.Material.Filled.Circle;
-    }
-    
-    private Color GetStepColor(ExecutionStep step)
-    {
-        if (ExecutionService.IsStepComplete(step))
-            return Color.Success;
-        if (step.StartedOn.HasValue)
-            return Color.Info;
-        return Color.Default;
-    }
-    
-    private bool CanStartStep(ExecutionStep step)
-    {
-        // Check if all steps with lower order numbers are completed
-        var stepsBeforeThisOne = _execution.Steps
-            .Where(s => s.Order < step.Order)
-            .ToList();
-            
-        // If there are no steps before this one, it can always be started
-        if (!stepsBeforeThisOne.Any()) return true;
-        
-        // Check if all previous steps are completed
-        return stepsBeforeThisOne.All(s => ExecutionService.IsStepComplete(s));
-    }
-    
-    private bool IsStepHighlighted(ExecutionStep step)
-    {
-        if (_selectedMemberToHighlight == null)
-            return false;
-            
-        return step.AssignedMembers.Any(m => m.Id == _selectedMemberToHighlight.Id);
-    }
-    
-    private bool IsCurrentStep(ExecutionStep step)
-    {
-        // Current step is the first incomplete step that can be started
-        if (ExecutionService.IsStepComplete(step)) return false; // Already completed
-        
-        var firstIncompleteStep = _execution.Steps
-            .Where(s => !ExecutionService.IsStepComplete(s) && CanStartStep(s))
+        Snackbar.Add($"Step {step.Order} completed", Severity.Success);
+
+        // Move to next step
+        var nextStep = _execution!.Steps
             .OrderBy(s => s.Order)
-            .FirstOrDefault();
-            
-        return firstIncompleteStep?.Id == step.Id;
-    }
-    
-    private void OpenStepCompletionDialog(ExecutionStep step)
-    {
-        _completionStep = step;
-        _completionResultSummary = step.ResultSummary ?? string.Empty;
-        _completionWentWell = step.WhatWentWell ?? string.Empty;
-        _completionCouldBeBetter = step.WhatCouldBeBetter ?? string.Empty;
-        _completionScreenshot = step.ResultScreenshot;
-        _completionDialogVisible = true;
-    }
-    
-    private void CloseCompletionDialog()
-    {
-        _completionDialogVisible = false;
-        _completionStep = null;
-        _completionResultSummary = string.Empty;
-        _completionWentWell = string.Empty;
-        _completionCouldBeBetter = string.Empty;
-        _completionScreenshot = null;
-    }
-    
-    private async Task SubmitStepCompletion()
-    {
-        if (_completionStep == null || string.IsNullOrWhiteSpace(_completionResultSummary))
-            return;
-            
-        _completionStep.CompleteOn = DateTime.Now;
-        _completionStep.ResultSummary = _completionResultSummary;
-        _completionStep.WhatWentWell = _completionWentWell;
-        _completionStep.WhatCouldBeBetter = _completionCouldBeBetter;
-        _completionStep.ResultScreenshot = _completionScreenshot;
-        
-        await ExecutionService.UpdateExecutionStepAsync(_completionStep);
-        Snackbar.Add("Step completed successfully", Severity.Success);
+            .FirstOrDefault(s => !s.CompleteOn.HasValue && !s.IsCancelled && s.Order > step.Order);
 
-        var id = _completionStep.Id;
-        CloseCompletionDialog();
-        
-        // Select next incomplete step if available and we're working with the main selected step
-        if (_completionStep == _selectedStep)
+        if (nextStep != null)
         {
-            var nextStep = _execution.Steps
-                .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != id)
-                .OrderBy(s => s.Order)
-                .FirstOrDefault();
-                
-            if (nextStep != null)
-            {
-                _selectedStep = nextStep;
-            }
+            _currentStep = nextStep;
         }
-        
-        // Force UI refresh to update step highlighting
+
         StateHasChanged();
     }
     
-    private async Task OpenStepApprovalDialog(ExecutionStep step)
+    private void OpenStepDetailsDialog(ExecutionStep step)
     {
-        // Auto-start the step if it hasn't been started yet (for go/nogo steps)
-        if (!step.StartedOn.HasValue)
+        _detailsStep = step;
+        _detailsDialogVisible = true;
+    }
+    
+    private void CloseDetailsDialog()
+    {
+        _detailsDialogVisible = false;
+        _detailsStep = null;
+    }
+    
+    private async Task SaveStepDetails()
+    {
+        if (_detailsStep != null)
         {
-            step.StartedOn = DateTime.Now;
+            await ExecutionService.UpdateExecutionStepAsync(_detailsStep);
+            Snackbar.Add("Step details saved", Severity.Success);
+        }
+        CloseDetailsDialog();
+        StateHasChanged();
+    }
+    
+    private async Task ApproveGoNoGo(ExecutionStep step)
+    {
+        if (_currentUser == null) return;
+        
+        var approval = step.Approvals.FirstOrDefault(a => a.ExecutionMemberId == _currentUser.Id);
+        if (approval == null) return;
+        
+        var parameters = new DialogParameters
+        {
+            { "ContentText", "Add any comments about your approval decision:" },
+            { "ButtonText", "Approve" },
+            { "Color", Color.Success }
+        };
+        
+        var dialog = await DialogService.ShowMessageBox(
+            "Approve Milestone",
+            "Are you sure you want to approve this Go/No-Go checkpoint?",
+            yesText: "Approve", cancelText: "Cancel");
+        
+        if (dialog == true)
+        {
+            approval.IsApproved = true;
+            approval.ApprovalDate = DateTime.Now;
             await ExecutionService.UpdateExecutionStepAsync(step);
-        }
-        
-        _approvalStep = step;
-        _selectedApprover = null;
-        _currentApproval = null;
-        _approvalDialogVisible = true;
-    }
-    
 
-    
-    private void CloseApprovalDialog()
-    {
-        _approvalDialogVisible = false;
-        _approvalStep = null;
-        _selectedApprover = null;
-        _currentApproval = null;
-    }
-    
-    private async Task SubmitStepApproval()
-    {
-        // if (_approvalStep == null || _selectedApprover == null || _currentApproval == null || string.IsNullOrWhiteSpace(_currentApproval.Comments))
-        //     return;
-            
-        // // Update approval
-        // _currentApproval.IsApproved = true;
-        // _currentApproval.ApprovalDate = DateTime.Now;
-        
-        // if (_currentApproval.Id == 0)
-        // {
-        //     // New approval record - add it
-        //     await ExecutionService.AddApprovalToStepAsync(_currentApproval);
-        //     _approvalStep.Approvals.Add(_currentApproval);
-        // }
-        // else
-        // {
-        //     // Existing approval record - update it
-        //     await ExecutionService.UpdateStepApprovalAsync(_currentApproval);
-        // }
-        
-        // Snackbar.Add($"Step approved by {_selectedApprover.Name}", Severity.Success);
-        // var stepId = _approvalStep.Id;
-        // CloseApprovalDialog();
-        
-        // // Reload execution to ensure all relationships and approval data are current
-        // _execution = await ExecutionService.GetExecutionAsync(_execution.Id);
-        // await LoadFallbackAvailabilityAsync();
-        
-        // // Check if the approved step is now complete and select next step if needed
-        // var approvedStep = _execution.Steps.FirstOrDefault(s => s.Id == stepId);
-        // if (approvedStep != null && ExecutionService.IsStepComplete(approvedStep))
-        // {
-        //     // If this was a fallback approval step, execute the fallback
-        //     if (approvedStep.FallbackOriginStepId.HasValue)
-        //     {
-        //         try
-        //         {
-        //             var newSteps = await ExecutionService.ExecuteFallbackAsync(_execution.Id, approvedStep.Id);
-        //             Snackbar.Add($"Fallback executed successfully. {newSteps.Count} fallback steps added.", Severity.Success);
-                    
-        //             // Reload execution to get the updated state
-        //             _execution = await ExecutionService.GetExecutionAsync(_execution.Id);
-        //             await LoadFallbackAvailabilityAsync();
-                    
-        //             // Select the first new fallback step
-        //             if (newSteps.Any())
-        //             {
-        //                 _selectedStep = _execution.Steps.FirstOrDefault(s => s.Id == newSteps.First().Id) ?? _selectedStep;
-        //             }
-        //         }
-        //         catch (Exception ex)
-        //         {
-        //             Snackbar.Add($"Error executing fallback: {ex.Message}", Severity.Error);
-        //         }
-        //     }
-        //     else
-        //     {
-        //         // Regular step completion - find next step
-        //         var nextStep = _execution.Steps
-        //             .Where(s => !ExecutionService.IsStepComplete(s) && s.Id != stepId)
-        //             .OrderBy(s => s.Order)
-        //             .FirstOrDefault();
-                    
-        //         if (nextStep != null)
-        //         {
-        //             _selectedStep = nextStep;
-        //         }
-        //     }
-        // }
-        // // Force UI refresh to update step highlighting
-        // StateHasChanged();
-    }
-    
-    // Helper method to check if a step has fallback definitions
-    private bool HasFallbackSteps(ExecutionStep step)
-    {
-        return _stepFallbackAvailability.GetValueOrDefault(step.Order, false);
-    }
-    
-    // Helper method to check if any previous step has fallback definitions
-    private bool HasAnyPreviousStepWithFallback(ExecutionStep step)
-    {
-        // Check if any step with a lower order number has fallback definitions
-        return _stepFallbackAvailability.Where(kvp => kvp.Key < step.Order && kvp.Value).Any();
-    }
-    
-    // Helper method to load fallback availability for all steps
-    private async Task LoadFallbackAvailabilityAsync()
-    {
-        _stepFallbackAvailability.Clear();
-        
-        if (_execution?.Steps == null)
-            return;
-        
-        foreach (var step in _execution.Steps)
-        {
-            var planStepOrder = step.PlanStep?.Order ?? step.Order;
-            var hasFeatures = await ExecutionService.HasFallbackStepsAsync(_execution.Id, planStepOrder);
-            _stepFallbackAvailability[step.Order] = hasFeatures;
-        }
-    }
-    
-    // Helper method to load fallback definitions for a step
-    private async Task<List<FallbackActivity>> LoadFallbackStepsAsync(ExecutionStep step)
-    {
-        if (_execution == null)
-            return new List<FallbackActivity>();
-
-        var planStepOrder = step.PlanStep?.Order ?? step.Order;
-        return await ExecutionService.GetFallbackStepsAsync(_execution.Id, planStepOrder);
-    }
-    
-    // Helper method to load all available fallback options from previous steps
-    private async Task<Dictionary<int, List<FallbackActivity>>> LoadAllAvailableFallbacksAsync(ExecutionStep currentStep)
-    {
-        var result = new Dictionary<int, List<FallbackActivity>>();
-        
-        if (_execution == null)
-            return result;
-        
-        // Find all previous steps that have fallback definitions
-        var previousStepsWithFallbacks = _stepFallbackAvailability
-            .Where(kvp => kvp.Key < currentStep.Order && kvp.Value)
-            .Select(kvp => kvp.Key)
-            .OrderByDescending(order => order); // Most recent first
-        
-        foreach (var stepOrder in previousStepsWithFallbacks)
-        {
-            var fallbacks = await ExecutionService.GetFallbackStepsAsync(_execution.Id, stepOrder);
-            if (fallbacks.Any())
+            // Check if all approvals are complete
+            if (step.Approvals.All(a => a.IsApproved.HasValue && a.IsApproved.Value))
             {
-                result[stepOrder] = fallbacks;
+                step.CompleteOn = DateTime.Now;
+                await ExecutionService.UpdateExecutionStepAsync(step);
+                Snackbar.Add("Milestone approved and completed!", Severity.Success);
             }
+            else
+            {
+                Snackbar.Add("Your approval has been recorded", Severity.Success);
+            }
+
+            StateHasChanged();
         }
+    }
+    
+    private async Task RejectGoNoGo(ExecutionStep step)
+    {
+        if (_currentUser == null) return;
         
-        return result;
-    }
-    
-    // Fallback methods
-    private async void OpenFallbackDialog(ExecutionStep step)
-    {
-        _fallbackStep = step;
-        _fallbackReason = string.Empty;
-        _availableFallbackOptions = await LoadAllAvailableFallbacksAsync(step);
+        var approval = step.Approvals.FirstOrDefault(a => a.ExecutionMemberId == _currentUser.Id);
+        if (approval == null) return;
         
-        // If there's only one option, select it automatically
-        if (_availableFallbackOptions.Count == 1)
-        {
-            _selectedFallbackStepOrder = _availableFallbackOptions.Keys.First();
-            _currentFallbackSteps = _availableFallbackOptions[_selectedFallbackStepOrder.Value];
-        }
-        else
-        {
-            _selectedFallbackStepOrder = null;
-            _currentFallbackSteps.Clear();
-        }
+        var dialog = await DialogService.ShowMessageBox(
+            "Reject Milestone",
+            "Are you sure you want to reject this Go/No-Go checkpoint? This may require fallback actions.",
+            yesText: "Reject", cancelText: "Cancel");
         
-        _fallbackDialogVisible = true;
-        StateHasChanged();
-    }
-    
-    private void CloseFallbackDialog()
-    {
-        _fallbackDialogVisible = false;
-        _fallbackStep = null;
-        _fallbackReason = string.Empty;
-        _currentFallbackSteps.Clear();
-        _availableFallbackOptions.Clear();
-        _selectedFallbackStepOrder = null;
-    }
-    
-    private void OnFallbackStepSelectionChanged(int? stepOrder)
-    {
-        _selectedFallbackStepOrder = stepOrder;
-        if (stepOrder.HasValue && _availableFallbackOptions.ContainsKey(stepOrder.Value))
+        if (dialog == true)
         {
-            _currentFallbackSteps = _availableFallbackOptions[stepOrder.Value];
+            approval.IsApproved = false;
+            approval.ApprovalDate = DateTime.Now;
+            await ExecutionService.UpdateExecutionStepAsync(step);
+            Snackbar.Add("Milestone rejected", Severity.Warning);
+            StateHasChanged();
         }
-        else
-        {
-            _currentFallbackSteps.Clear();
-        }
-    }
-    
-    private async Task SubmitFallback()
-    {
-        throw new NotImplementedException();
-        // if (_fallbackStep == null || string.IsNullOrWhiteSpace(_fallbackReason) || !_currentFallbackSteps.Any() || !_selectedFallbackStepOrder.HasValue)
-        //     return;
-            
-        // try
-        // {
-        //     // Find the execution step that corresponds to the selected fallback step order
-        //     var targetStep = _execution.Steps.FirstOrDefault(s => s.Order == _selectedFallbackStepOrder.Value);
-        //     if (targetStep == null)
-        //     {
-        //         Snackbar.Add("Target step not found", Severity.Error);
-        //         return;
-        //     }
-            
-        //     // todo Create fallback approval step using the target step (that has the fallback definitions)
-        //     // var approvalStep = await ExecutionService.CreateFallbackApprovalStepAsync(
-        //     //     _execution.Id, 
-        //     //     targetStep.Id, 
-        //     //     _fallbackReason);
-            
-        //     Snackbar.Add($"Fallback approval step created for step '{targetStep.Name}'. Waiting for team approval.", Severity.Info);
-        //     CloseFallbackDialog();
-            
-        //     // Reload execution to show the new approval step
-        //     _execution = await ExecutionService.GetExecutionAsync(_execution.Id);
-        //     await LoadFallbackAvailabilityAsync();
-            
-        //     // Select the new approval step
-        //     _selectedStep = _execution.Steps.FirstOrDefault(s => s.Id == approvalStep.Id) ?? _selectedStep;
-            
-        //     StateHasChanged();
-        // }
-        // catch (Exception ex)
-        // {
-        //     Snackbar.Add($"Error creating fallback approval: {ex.Message}", Severity.Error);
-        // }
     }
 }
+

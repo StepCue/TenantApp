@@ -1,0 +1,313 @@
+@using StepCue.TenantApp.Data.Models.Execution
+@using StepCue.TenantApp.Data.Models
+
+<MudPaper Elevation="2" Class="timeline-header pa-3 mb-3">
+    <div class="timeline-info mb-2">
+        <div class="d-flex gap-4 align-center">
+            <div>
+                <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-1" />
+                <strong>Start:</strong> @GetStartTime()
+            </div>
+            <div>
+                <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" Class="mr-1" />
+                <strong>Est. End:</strong> @GetEstimatedEndTime()
+            </div>
+            <div class="@GetTimeTrackingClass()">
+                <MudIcon Icon="@GetTimeTrackingIcon()" Size="Size.Small" Class="mr-1" />
+                <strong>@GetTimeTrackingText()</strong>
+            </div>
+            <div>
+                <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small" Class="mr-1" />
+                <strong>Next Milestone:</strong> @GetTimeToNextGoNoGo()
+            </div>
+        </div>
+    </div>
+    
+    <div class="timeline-scroll">
+        <div class="timeline-track">
+            @foreach (var step in Execution.Steps.OrderBy(s => s.Order))
+            {
+                var isActive = CurrentStepId == step.Id;
+                var isComplete = step.CompleteOn.HasValue || step.IsCancelled;
+                var cssClass = GetStepClass(step, isActive);
+                
+                <div class="@cssClass" @onclick="@(() => OnStepClick.InvokeAsync(step))">
+                    @if (step.StepType == StepType.GoNoGo)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.EmojiEvents" Size="Size.Medium" Class="milestone-icon" />
+                    }
+                    else if (isComplete)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" />
+                    }
+                    else if (isActive)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" />
+                    }
+                    else
+                    {
+                        <div class="step-number">@step.Order</div>
+                    }
+                    
+                    @if (step.StepType == StepType.GoNoGo)
+                    {
+                        <MudText Typo="Typo.caption" Class="mt-1 milestone-label">Milestone</MudText>
+                    }
+                </div>
+                
+                @if (step.Order < Execution.Steps.OrderBy(s => s.Order).Last().Order)
+                {
+                    <div class="timeline-connector @(isComplete ? "complete" : "")"></div>
+                }
+            }
+        </div>
+    </div>
+</MudPaper>
+
+<style>
+    .timeline-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: var(--mud-palette-surface);
+    }
+    
+    .timeline-info {
+        font-size: 0.875rem;
+    }
+    
+    .time-on-track {
+        color: var(--mud-palette-success);
+    }
+    
+    .time-ahead {
+        color: var(--mud-palette-success);
+    }
+    
+    .time-behind {
+        color: var(--mud-palette-error);
+    }
+    
+    .timeline-scroll {
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: thin;
+    }
+    
+    .timeline-track {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        min-width: min-content;
+        padding: 12px 0;
+    }
+    
+    .timeline-step {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex-shrink: 0;
+        background-color: var(--mud-palette-background-grey);
+        border: 2px solid var(--mud-palette-divider);
+        color: var(--mud-palette-text-secondary);
+    }
+    
+    .timeline-step.active {
+        background-color: var(--mud-palette-primary);
+        color: white;
+        border-color: var(--mud-palette-primary);
+        transform: scale(1.15);
+        box-shadow: 0 0 0 4px rgba(var(--mud-palette-primary-rgb), 0.2);
+    }
+    
+    .timeline-step.complete {
+        background-color: var(--mud-palette-success);
+        color: white;
+        border-color: var(--mud-palette-success);
+    }
+    
+    .timeline-step.cancelled {
+        background-color: var(--mud-palette-warning);
+        color: white;
+        border-color: var(--mud-palette-warning);
+    }
+    
+    .timeline-step.milestone {
+        width: 56px;
+        height: 56px;
+        background-color: var(--mud-palette-warning);
+        color: white;
+        border: 3px solid var(--mud-palette-warning-darken);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    .timeline-step.milestone.active {
+        background-color: var(--mud-palette-warning-darken);
+        transform: scale(1.2);
+    }
+    
+    .timeline-step.milestone.complete {
+        background-color: var(--mud-palette-success);
+        border-color: var(--mud-palette-success-darken);
+    }
+    
+    .timeline-step:hover:not(.active) {
+        transform: scale(1.1);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .timeline-connector {
+        width: 40px;
+        height: 3px;
+        background-color: var(--mud-palette-divider);
+        flex-shrink: 0;
+    }
+    
+    .timeline-connector.complete {
+        background-color: var(--mud-palette-success);
+    }
+    
+    .step-number {
+        font-size: 1rem;
+        font-weight: bold;
+    }
+    
+    .milestone-icon {
+        margin-bottom: -4px;
+    }
+    
+    .milestone-label {
+        font-size: 0.65rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public Execution Execution { get; set; } = default!;
+    
+    [Parameter]
+    public int? CurrentStepId { get; set; }
+    
+    [Parameter]
+    public EventCallback<ExecutionStep> OnStepClick { get; set; }
+    
+    private string GetStartTime()
+    {
+        if (Execution.Plan?.StartTime != null)
+        {
+            return Execution.Plan.StartTime.Value.ToString("g");
+        }
+        return Execution.CreatedOn.ToString("g");
+    }
+    
+    private string GetEstimatedEndTime()
+    {
+        var startTime = Execution.Plan?.StartTime ?? Execution.CreatedOn;
+        var totalMinutes = Execution.Steps.Sum(s => s.PlanStep?.MinutesEffort ?? 0);
+        return startTime.AddMinutes(totalMinutes).ToString("g");
+    }
+    
+    private string GetTimeTrackingText()
+    {
+        var minutesDiff = GetMinutesDifference();
+        
+        if (minutesDiff == 0)
+            return "On Track";
+        
+        if (minutesDiff > 0)
+            return $"{minutesDiff} min ahead";
+        
+        return $"{Math.Abs(minutesDiff)} min behind";
+    }
+    
+    private string GetTimeTrackingClass()
+    {
+        var minutesDiff = GetMinutesDifference();
+        
+        if (minutesDiff == 0)
+            return "time-on-track";
+        
+        return minutesDiff > 0 ? "time-ahead" : "time-behind";
+    }
+    
+    private string GetTimeTrackingIcon()
+    {
+        var minutesDiff = GetMinutesDifference();
+        
+        if (minutesDiff >= 0)
+            return Icons.Material.Filled.TrendingUp;
+        
+        return Icons.Material.Filled.TrendingDown;
+    }
+    
+    private int GetMinutesDifference()
+    {
+        var startTime = Execution.Plan?.StartTime ?? Execution.CreatedOn;
+        var currentStep = Execution.Steps.FirstOrDefault(s => s.Id == CurrentStepId);
+        
+        if (currentStep == null)
+            return 0;
+        
+        // Calculate expected time to reach current step
+        var expectedMinutes = Execution.Steps
+            .Where(s => s.Order < currentStep.Order)
+            .Sum(s => s.PlanStep?.MinutesEffort ?? 0);
+        
+        var expectedTime = startTime.AddMinutes(expectedMinutes);
+        var actualTime = currentStep.StartedOn ?? DateTime.Now;
+        
+        return (int)(expectedTime - actualTime).TotalMinutes;
+    }
+    
+    private string GetTimeToNextGoNoGo()
+    {
+        var currentStep = Execution.Steps.FirstOrDefault(s => s.Id == CurrentStepId);
+        if (currentStep == null)
+            return "N/A";
+        
+        var nextGoNoGo = Execution.Steps
+            .Where(s => s.Order > currentStep.Order && s.StepType == StepType.GoNoGo)
+            .OrderBy(s => s.Order)
+            .FirstOrDefault();
+        
+        if (nextGoNoGo == null)
+            return "None remaining";
+        
+        var minutesToGoNoGo = Execution.Steps
+            .Where(s => s.Order > currentStep.Order && s.Order <= nextGoNoGo.Order)
+            .Sum(s => s.PlanStep?.MinutesEffort ?? 0);
+        
+        if (minutesToGoNoGo < 60)
+            return $"{minutesToGoNoGo} min";
+        
+        var hours = minutesToGoNoGo / 60;
+        var minutes = minutesToGoNoGo % 60;
+        return minutes == 0 ? $"{hours} hr" : $"{hours} hr {minutes} min";
+    }
+    
+    private string GetStepClass(ExecutionStep step, bool isActive)
+    {
+        var classes = "timeline-step";
+
+        if (step.StepType == StepType.GoNoGo)
+            classes += " milestone";
+
+        if (isActive)
+            classes += " active";
+        else if (step.IsCancelled)
+            classes += " cancelled";
+        else if (step.CompleteOn.HasValue)
+            classes += " complete";
+
+        return classes;
+    }
+}
