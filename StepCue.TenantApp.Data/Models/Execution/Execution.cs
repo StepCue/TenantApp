@@ -13,9 +13,12 @@ namespace StepCue.TenantApp.Data.Models.Execution
         public int Id { get; set; }
         
         public string Name { get; set; } = string.Empty;
-        
+
         public DateTime CreatedOn { get; set; } = DateTime.Now;
 
+        public int PlanId { get; set; }
+
+        [ForeignKey("PlanId")]
         public Plan Plan { get; set; }
 
         public List<ExecutionMember> Members { get; set; } = new();

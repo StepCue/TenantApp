@@ -22,7 +22,8 @@ namespace StepCue.TenantApp.Core.Services
                 .Include(e => e.Plan)
                 .Include(e => e.Members)
                 .Include(e => e.Steps).ThenInclude(s => s.AssignedMembers)
-                .Include(e => e.Steps).ThenInclude(s => s.Approvals).ThenInclude(a => a.ExecutionMember);
+                .Include(e => e.Steps).ThenInclude(s => s.Approvals).ThenInclude(a => a.ExecutionMember)
+                .Include(e => e.Steps).ThenInclude(s => s.PlanStep);
         }
 
         public async Task<Execution> GetExecutionAsync(int id)
@@ -72,7 +73,7 @@ namespace StepCue.TenantApp.Core.Services
                     Screenshot = step.Screenshot,
                     Order = step.Order,
                     StepType = step.StepType,
-                    PlanStepOrder = step.Order // Track original plan step order
+                    PlanStepId = step.Id // Track reference to original plan step
                 };
 
                 // Copy assigned members as ExecutionMembers

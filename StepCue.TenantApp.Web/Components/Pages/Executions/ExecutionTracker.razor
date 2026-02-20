@@ -1062,7 +1062,7 @@
         
         foreach (var step in _execution.Steps)
         {
-            var planStepOrder = step.PlanStepOrder ?? step.Order;
+            var planStepOrder = step.PlanStep?.Order ?? step.Order;
             var hasFeatures = await ExecutionService.HasFallbackStepsAsync(_execution.Id, planStepOrder);
             _stepFallbackAvailability[step.Order] = hasFeatures;
         }
@@ -1073,8 +1073,8 @@
     {
         if (_execution == null)
             return new List<FallbackActivity>();
-        
-        var planStepOrder = step.PlanStepOrder ?? step.Order;
+
+        var planStepOrder = step.PlanStep?.Order ?? step.Order;
         return await ExecutionService.GetFallbackStepsAsync(_execution.Id, planStepOrder);
     }
     

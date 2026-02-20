@@ -9,7 +9,9 @@ namespace StepCue.TenantApp.Data.Models.Execution
     public class ExecutionStep
     {
         public int Id { get; set; }
-        
+
+        public int ExecutionId { get; set; }
+
         [ForeignKey("ExecutionId")]
         public Execution Execution { get; set; }
         
@@ -39,10 +41,13 @@ namespace StepCue.TenantApp.Data.Models.Execution
         
         
         public int? FallbackOriginStepId { get; set; }
-        
+
         public string FallbackReason { get; set; } = string.Empty;
-        
-        public int? PlanStepOrder { get; set; } // Tracks the original plan step order for fallback lookups
+
+        public int? PlanStepId { get; set; }
+
+        [ForeignKey("PlanStepId")]
+        public PlanStep? PlanStep { get; set; }
 
         //from planning
 
