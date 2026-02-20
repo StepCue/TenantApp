@@ -27,7 +27,7 @@ WORKDIR /app
 COPY --from=build /app/publish .
 
 # Create a non-root user for security
-RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
+RUN useradd -m -u 1000 appuser && chown -R appuser /app
 USER appuser
 
 # Expose port 8080 (ASP.NET Core default in containers)
@@ -38,3 +38,4 @@ ENV ASPNETCORE_URLS=http://+:8080
 
 # Set the entry point
 ENTRYPOINT ["dotnet", "StepCue.TenantApp.Web.dll"]
+
