@@ -8,7 +8,7 @@ namespace StepCue.TenantApp.Data.Models
 {
     public enum StepType
     {
-        Execution = 0,
+        Activity = 0,
         GoNoGo = 1
     }
 }

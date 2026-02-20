@@ -1,11 +1,13 @@
-# Use the .NET 8.0 SDK for building
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+# Use the .NET 10.0 SDK for building
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /app
 
 # Copy solution file and project files
 COPY *.sln ./
 COPY StepCue.TenantApp.Web/*.csproj StepCue.TenantApp.Web/
 COPY StepCue.TenantApp.Data/*.csproj StepCue.TenantApp.Data/
+COPY StepCue.TenantApp.Core/*.csproj StepCue.TenantApp.Core/
+COPY StepCue.TenantApp.Core.Tests/*.csproj StepCue.TenantApp.Core.Tests/
 
 # Restore NuGet packages
 RUN dotnet restore
@@ -19,13 +21,13 @@ RUN dotnet build --configuration Release --no-restore
 # Publish the application
 RUN dotnet publish StepCue.TenantApp.Web/StepCue.TenantApp.Web.csproj --configuration Release --no-build --output /app/publish
 
-# Use the .NET 8.0 runtime for the final image
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+# Use the .NET 10.0 runtime for the final image
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
 # Create a non-root user for security
-RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
+RUN useradd -m appuser && chown -R appuser /app
 USER appuser
 
 # Expose port 8080 (ASP.NET Core default in containers)
@@ -36,3 +38,5 @@ ENV ASPNETCORE_URLS=http://+:8080
 
 # Set the entry point
 ENTRYPOINT ["dotnet", "StepCue.TenantApp.Web.dll"]
+
+

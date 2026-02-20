@@ -6,6 +6,7 @@ using StepCue.TenantApp.Data.Models.Planning;
 
 namespace StepCue.TenantApp.Data.Models.Execution
 {
+    //represents a person involved in the execution of a plan, can be assigned to steps and activities, may or may not be part of the original planning
     public class ExecutionMember
     {
         [Key]

@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace StepCue.TenantApp.Data.Models.Planning
 {
+    //represents a single step within a plan, which can be an activity or a decision point, and can have assigned members and fallback activities
     public class PlanStep
     {
         [Key]
@@ -18,10 +19,10 @@ namespace StepCue.TenantApp.Data.Models.Planning
         
         public byte[]? Screenshot { get; set; }
         
-        public StepType StepType { get; set; } = StepType.Execution;
+        public StepType StepType { get; set; } = StepType.Activity;
         
         public List<PlanMember> AssignedMembers { get; set; } = new();
-        public List<Fallback> FallbackSteps { get; set; } = new();
+        public List<FallbackActivity> FallbackActivities { get; set; } = new();
 
     }
 }

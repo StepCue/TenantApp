@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace StepCue.TenantApp.Data.Models.Planning
 {
+    //represents a person involved in the planning and execution of a plan, can be assigned to steps and activities
     public class PlanMember
     {
         [Key]

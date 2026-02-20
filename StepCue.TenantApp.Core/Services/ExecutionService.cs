@@ -22,7 +22,8 @@ namespace StepCue.TenantApp.Core.Services
                 .Include(e => e.Plan)
                 .Include(e => e.Members)
                 .Include(e => e.Steps).ThenInclude(s => s.AssignedMembers)
-                .Include(e => e.Steps).ThenInclude(s => s.Approvals).ThenInclude(a => a.ExecutionMember);
+                .Include(e => e.Steps).ThenInclude(s => s.Approvals).ThenInclude(a => a.ExecutionMember)
+                .Include(e => e.Steps).ThenInclude(s => s.PlanStep);
         }
 
         public async Task<Execution> GetExecutionAsync(int id)
@@ -72,7 +73,7 @@ namespace StepCue.TenantApp.Core.Services
                     Screenshot = step.Screenshot,
                     Order = step.Order,
                     StepType = step.StepType,
-                    PlanStepOrder = step.Order // Track original plan step order
+                    PlanStepId = step.Id // Track reference to original plan step
                 };
 
                 // Copy assigned members as ExecutionMembers
@@ -148,7 +149,7 @@ namespace StepCue.TenantApp.Core.Services
             }
 
             // For regular execution steps, check if CompleteOn is set
-            if (step.StepType == StepType.Execution)
+            if (step.StepType == StepType.Activity)
             {
                 return step.CompleteOn.HasValue;
             }
@@ -181,30 +182,30 @@ namespace StepCue.TenantApp.Core.Services
             var execution = await _context.Executions
                 .Include(e => e.Plan)
                 .ThenInclude(p => p.Steps)
-                .ThenInclude(s => s.FallbackSteps)
+                .ThenInclude(s => s.FallbackActivities)
                 .FirstOrDefaultAsync(e => e.Id == executionId);
 
             if (execution?.Plan == null)
                 return false;
 
             var planStep = execution.Plan.Steps.FirstOrDefault(ps => ps.Order == stepOrder);
-            return planStep?.FallbackSteps.Any() ?? false;
+            return planStep?.FallbackActivities.Any() ?? false;
         }
 
-        public async Task<List<Fallback>> GetFallbackStepsAsync(int executionId, int stepOrder)
+        public async Task<List<FallbackActivity>> GetFallbackStepsAsync(int executionId, int stepOrder)
         {
             var execution = await _context.Executions
                 .Include(e => e.Plan)
                 .ThenInclude(p => p.Steps)
-                .ThenInclude(s => s.FallbackSteps)
+                .ThenInclude(s => s.FallbackActivities)
                 .ThenInclude(f => f.AssignedMembers)
                 .FirstOrDefaultAsync(e => e.Id == executionId);
 
             if (execution?.Plan == null)
-                return new List<Fallback>();
+                return new List<FallbackActivity>();
 
             var planStep = execution.Plan.Steps.FirstOrDefault(ps => ps.Order == stepOrder);
-            return planStep?.FallbackSteps ?? new List<Fallback>();
+            return planStep?.FallbackActivities ?? new List<FallbackActivity>();
         }
 
         private bool CanStartStep(ExecutionStep step, Execution execution)

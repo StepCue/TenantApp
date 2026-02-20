@@ -22,7 +22,7 @@
                    Label="Step Type" 
                    Variant="Variant.Outlined" 
                    Class="mb-3">
-            <MudSelectItem T="StepType" Value="@StepType.Execution">Execution</MudSelectItem>
+            <MudSelectItem T="StepType" Value="@StepType.Activity">Execution</MudSelectItem>
             <MudSelectItem T="StepType" Value="@StepType.GoNoGo">Go/NoGo</MudSelectItem>
         </MudSelect>
         
@@ -152,34 +152,34 @@
 
     private void OnFallbackMembersChanged(int fallbackIndex, IEnumerable<PlanMember> selectedMembers)
     {
-        if (fallbackIndex >= 0 && fallbackIndex < Step.FallbackSteps.Count)
+        if (fallbackIndex >= 0 && fallbackIndex < Step.FallbackActivities.Count)
         {
-            Step.FallbackSteps[fallbackIndex].AssignedMembers = selectedMembers.ToList();
+            Step.FallbackActivities[fallbackIndex].AssignedMembers = selectedMembers.ToList();
         }
     }
 
     private void AddFallbackStep()
     {
-        var newFallback = new Fallback
+        var newFallback = new FallbackActivity
         {
-            Name = $"Fallback Step {Step.FallbackSteps.Count + 1}",
+            Name = $"Fallback Step {Step.FallbackActivities.Count + 1}",
             Summary = "",
-            Order = Step.FallbackSteps.Count + 1,
+            Order = Step.FallbackActivities.Count + 1,
             AssignedMembers = Step.AssignedMembers.ToList()
         };
-        Step.FallbackSteps.Add(newFallback);
+        Step.FallbackActivities.Add(newFallback);
     }
 
     private void RemoveFallbackStep(int index)
     {
-        if (index >= 0 && index < Step.FallbackSteps.Count)
+        if (index >= 0 && index < Step.FallbackActivities.Count)
         {
-            Step.FallbackSteps.RemoveAt(index);
+            Step.FallbackActivities.RemoveAt(index);
             
             // Reorder remaining fallback steps
-            for (int i = 0; i < Step.FallbackSteps.Count; i++)
+            for (int i = 0; i < Step.FallbackActivities.Count; i++)
             {
-                Step.FallbackSteps[i].Order = i + 1;
+                Step.FallbackActivities[i].Order = i + 1;
             }
         }
     }
