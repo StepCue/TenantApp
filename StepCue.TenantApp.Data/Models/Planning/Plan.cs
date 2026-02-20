@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace StepCue.TenantApp.Data.Models.Planning
 {
+    //overall plan for a specific goal, consisting of multiple steps and members
     public class Plan
     {
         [Key]

@@ -281,7 +281,7 @@
                                             
                                             <!-- Fallback button - show for started execution steps that come after steps with fallback definitions -->
                                             @if (!step.IsCancelled && isStarted && !isCompleted && 
-                                                 step.StepType == StepType.Execution && 
+                                                 step.StepType == StepType.Activity && 
                                                  HasAnyPreviousStepWithFallback(step))
                                             {
                                                 <MudButton Variant="Variant.Filled" 
@@ -687,8 +687,8 @@
     private bool _fallbackDialogVisible = false;
     private ExecutionStep? _fallbackStep;
     private string _fallbackReason = string.Empty;
-    private List<Fallback> _currentFallbackSteps = new();
-    private Dictionary<int, List<Fallback>> _availableFallbackOptions = new();
+    private List<FallbackActivity> _currentFallbackSteps = new();
+    private Dictionary<int, List<FallbackActivity>> _availableFallbackOptions = new();
     private int? _selectedFallbackStepOrder;
     private Dictionary<int, bool> _stepFallbackAvailability = new();
     
@@ -1062,26 +1062,26 @@
         
         foreach (var step in _execution.Steps)
         {
-            var planStepOrder = step.PlanStepOrder ?? step.Order;
+            var planStepOrder = step.PlanStep?.Order ?? step.Order;
             var hasFeatures = await ExecutionService.HasFallbackStepsAsync(_execution.Id, planStepOrder);
             _stepFallbackAvailability[step.Order] = hasFeatures;
         }
     }
     
     // Helper method to load fallback definitions for a step
-    private async Task<List<Fallback>> LoadFallbackStepsAsync(ExecutionStep step)
+    private async Task<List<FallbackActivity>> LoadFallbackStepsAsync(ExecutionStep step)
     {
         if (_execution == null)
-            return new List<Fallback>();
-        
-        var planStepOrder = step.PlanStepOrder ?? step.Order;
+            return new List<FallbackActivity>();
+
+        var planStepOrder = step.PlanStep?.Order ?? step.Order;
         return await ExecutionService.GetFallbackStepsAsync(_execution.Id, planStepOrder);
     }
     
     // Helper method to load all available fallback options from previous steps
-    private async Task<Dictionary<int, List<Fallback>>> LoadAllAvailableFallbacksAsync(ExecutionStep currentStep)
+    private async Task<Dictionary<int, List<FallbackActivity>>> LoadAllAvailableFallbacksAsync(ExecutionStep currentStep)
     {
-        var result = new Dictionary<int, List<Fallback>>();
+        var result = new Dictionary<int, List<FallbackActivity>>();
         
         if (_execution == null)
             return result;
