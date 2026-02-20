@@ -19,13 +19,16 @@ jobs:
       shell: bash
       run: |
         if [[ "${GITHUB_REF}" == "refs/heads/"* ]]; then
-          echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
         elif [[ "${GITHUB_REF}" == "refs/pull/"* ]]; then
-          echo "BRANCH_NAME=pr-${GITHUB_REF#refs/pull/}" >> $GITHUB_ENV
-          echo "BRANCH_NAME=${BRANCH_NAME%/*}" >> $GITHUB_ENV
+          BRANCH_NAME="pr-${GITHUB_REF#refs/pull/}"
+          BRANCH_NAME="${BRANCH_NAME%/*}"
         else
-          echo "BRANCH_NAME=${GITHUB_REF}" >> $GITHUB_ENV
+          BRANCH_NAME="${GITHUB_REF}"
         fi
+        # Sanitize branch name for Docker tag (replace / with -)
+        BRANCH_NAME="${BRANCH_NAME//\//-}"
+        echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
     
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
