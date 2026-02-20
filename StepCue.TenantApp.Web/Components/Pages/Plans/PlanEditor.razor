@@ -104,13 +104,29 @@
                     Placeholder="Enter a descriptive name for this plan..."
                     Class="mb-3" />
 
-                <MudDatePicker 
-                    @bind-Date="_plan.StartTime"
-                    Label="Planned Start Time"
-                    Variant="Variant.Outlined"
-                    Editable="true"
-                    DisableToolbar="false"
-                    HelperText="When do you plan to start executing this plan?" />
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Planned Start Time</MudText>
+                <div class="d-flex gap-3">
+                    <MudDatePicker 
+                        Date="_planStartDate"
+                        DateChanged="OnStartDateChanged"
+                        Label="Date"
+                        Variant="Variant.Outlined"
+                        Editable="true"
+                        DisableToolbar="false"
+                        Class="flex-grow-1" />
+
+                    <MudTimePicker 
+                        Time="_planStartTime"
+                        TimeChanged="OnStartTimeChanged"
+                        Label="Time"
+                        Variant="Variant.Outlined"
+                        Editable="true"
+                        AmPm="true"
+                        Class="flex-grow-1" />
+                </div>
+                <MudText Typo="Typo.caption" Class="mt-1 mud-text-secondary">
+                    When do you plan to start executing this plan?
+                </MudText>
             </MudPaper>
 
             <MudPaper Elevation="2" Class="pa-4 mb-4">
@@ -231,6 +247,10 @@
     private PlanStep? _flashingStep;
     private System.Threading.Timer? _flashTimer;
 
+    // Separate date and time for the pickers
+    private DateTime? _planStartDate;
+    private TimeSpan? _planStartTime;
+
     private DialogOptions _dialogOptions = new DialogOptions 
     { 
         MaxWidth = MaxWidth.ExtraLarge, 
@@ -253,6 +273,7 @@
             if (plan != null)
             {
                 _plan = plan;
+                InitializeDateTimePickers();
             }
             else
             {
@@ -268,6 +289,45 @@
         }
 
         _isLoading = false;
+    }
+
+    private void InitializeDateTimePickers()
+    {
+        if (_plan.StartTime.HasValue)
+        {
+            _planStartDate = _plan.StartTime.Value.Date;
+            _planStartTime = _plan.StartTime.Value.TimeOfDay;
+        }
+    }
+
+    private void OnStartDateChanged(DateTime? date)
+    {
+        _planStartDate = date;
+        UpdatePlanStartTime();
+        StateHasChanged();
+    }
+
+    private void OnStartTimeChanged(TimeSpan? time)
+    {
+        _planStartTime = time;
+        UpdatePlanStartTime();
+        StateHasChanged();
+    }
+
+    private void UpdatePlanStartTime()
+    {
+        if (_planStartDate.HasValue && _planStartTime.HasValue)
+        {
+            _plan.StartTime = _planStartDate.Value.Date + _planStartTime.Value;
+        }
+        else if (_planStartDate.HasValue)
+        {
+            _plan.StartTime = _planStartDate.Value.Date;
+        }
+        else
+        {
+            _plan.StartTime = null;
+        }
     }
 
     private void SortStepsCollection()
@@ -438,8 +498,11 @@
             CloseOnEscapeKey = true, 
             MaxWidth = MaxWidth.Small, 
             FullWidth = true,
-            BackdropClick = false
+            BackdropClick = false,
+            Position = DialogPosition.Center,
+            CloseButton = false
         };
+
         var dialog = await DialogService.ShowAsync<AddMemberDialog>("Add New Member", options);
         var result = await dialog.Result;
 

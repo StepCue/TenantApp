@@ -86,37 +86,36 @@
                 @onclick:stopPropagation="true"
                 Class="step-minutes-field" />
 
-            <MudSelect 
-                T="PlanMember" 
-                MultiSelection="true"
-                SelectedValues="@Step.AssignedMembers"
-                SelectedValuesChanged="@((IEnumerable<PlanMember> values) => OnMembersChanged(values))"
-                Label="Assigned Members"
-                Variant="Variant.Outlined"
-                Margin="Margin.Dense"
-                Dense="true"
-                @onclick:stopPropagation="true"
-                ToStringFunc="@(m => string.IsNullOrEmpty(m?.Name) ? "Unnamed Member" : m.Name)"
-                Class="flex-grow-1">
-                @foreach (var member in AvailableMembers)
-                {
-                    var memberName = string.IsNullOrEmpty(member.Name) ? "Unnamed Member" : member.Name;
-                    <MudSelectItem T="PlanMember" Value="@member">@memberName</MudSelectItem>
-                }
-                <MudDivider Class="my-2" />
-                <MudButton 
-                    StartIcon="@Icons.Material.Filled.PersonAdd" 
-                    FullWidth="true"
+            <div class="d-flex gap-2 align-center">
+                <MudSelect 
+                    T="PlanMember" 
+                    MultiSelection="true"
+                    SelectedValues="@Step.AssignedMembers"
+                    SelectedValuesChanged="@((IEnumerable<PlanMember> values) => OnMembersChanged(values))"
+                    Label="Assigned Members"
+                    Variant="Variant.Outlined"
+                    Margin="Margin.Dense"
+                    Dense="true"
+                    @onclick:stopPropagation="true"
+                    ToStringFunc="@(m => string.IsNullOrEmpty(m?.Name) ? "Unnamed Member" : m.Name)"
+                    Class="flex-grow-1">
+                    @foreach (var member in AvailableMembers)
+                    {
+                        var memberName = string.IsNullOrEmpty(member.Name) ? "Unnamed Member" : member.Name;
+                        <MudSelectItem T="PlanMember" Value="@member">@memberName</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudIconButton 
+                    Icon="@Icons.Material.Filled.PersonAdd" 
                     Color="Color.Primary"
-                    Variant="Variant.Text"
                     Size="Size.Small"
-                    OnClick="@(() => OnAddNewMember.InvokeAsync(Step))"
-                    Class="px-2 py-1">
-                    Add New Member
-                </MudButton>
-            </MudSelect>
+                    OnClick="@HandleAddMemberClick"
+                    Title="Add New Member"
+                    Style="margin-top: 8px;" />
+            </div>
         </div>
-        
+
         @if (!string.IsNullOrWhiteSpace(Step.Summary) || Step.Screenshot != null || Step.FallbackActivities.Any())
         {
             <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text" Icon="@Icons.Material.Filled.Info">
@@ -427,5 +426,11 @@
     private async Task HandleDeleteClick()
     {
         await OnDelete.InvokeAsync(Step);
+    }
+
+    private async Task HandleAddMemberClick(MouseEventArgs e)
+    {
+        // The stopPropagation in the markup prevents the dropdown from interfering
+        await OnAddNewMember.InvokeAsync(Step);
     }
 }
