@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.36121.58
+# Visual Studio Version 18
+VisualStudioVersion = 18.3.11512.155 d18.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StepCue.TenantApp.Web", "StepCue.TenantApp.Web\StepCue.TenantApp.Web.csproj", "{F2634CB1-5C3E-42EF-A783-7900CBB8F18F}"
 EndProject
@@ -10,6 +10,11 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StepCue.TenantApp.Core", "StepCue.TenantApp.Core\StepCue.TenantApp.Core.csproj", "{AE001CF7-2DD9-4BBC-AEB3-4DC76BF6A968}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StepCue.TenantApp.Core.Tests", "StepCue.TenantApp.Core.Tests\StepCue.TenantApp.Core.Tests.csproj", "{B3BC59F8-03A5-4049-A28B-6E345F994D9C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{30AD168C-8FE5-49FF-88EB-59492EEC4EE6}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
