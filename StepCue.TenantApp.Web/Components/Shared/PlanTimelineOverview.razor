@@ -3,7 +3,25 @@
 
 <MudPaper Elevation="2" Class="pa-4" Style="position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto;">
     <MudText Typo="Typo.h6" Class="mb-3">Plan Overview</MudText>
-    
+
+    @if (PlanStartTime.HasValue && Steps.Any())
+    {
+        <MudPaper Elevation="0" Class="pa-3 mb-3" Style="background-color: var(--mud-palette-info-lighten); border-left: 4px solid var(--mud-palette-info);">
+            <MudText Typo="Typo.body2" Class="mb-1">
+                <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-1" />
+                <strong>Start:</strong> @PlanStartTime.Value.ToString("g")
+            </MudText>
+            <MudText Typo="Typo.body2" Class="mb-1">
+                <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" Class="mr-1" />
+                <strong>End:</strong> @GetEndTime().ToString("g")
+            </MudText>
+            <MudText Typo="Typo.body2">
+                <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small" Class="mr-1" />
+                <strong>Duration:</strong> @GetTotalDurationText()
+            </MudText>
+        </MudPaper>
+    }
+
     @if (!Steps.Any())
     {
         <MudAlert Severity="Severity.Info" Dense="true">
@@ -17,7 +35,7 @@
             {
                 var isSelected = SelectedStepId == step.Id;
                 var stepClass = isSelected ? "timeline-step selected" : "timeline-step";
-                
+
                 <div class="@stepClass" @onclick="@(() => OnStepClick.InvokeAsync(step))">
                     <div class="timeline-marker">
                         <div class="timeline-dot">
@@ -34,6 +52,10 @@
                         </MudText>
                         <MudText Typo="Typo.caption" Color="Color.Default">
                             @GetStepTypeLabel(step.StepType)
+                            @if (step.MinutesEffort > 0)
+                            {
+                                <text> • @step.MinutesEffort min</text>
+                            }
                         </MudText>
                         @if (step.AssignedMembers.Any())
                         {
@@ -47,16 +69,19 @@
                 </div>
             }
         </div>
-        
+
         <MudDivider Class="my-3" />
-        
+
         <div class="plan-summary">
             <MudText Typo="Typo.caption" Class="mb-1">
                 <strong>Total Steps:</strong> @Steps.Count
             </MudText>
-            <MudText Typo="Typo.caption">
+            <MudText Typo="Typo.caption" Class="mb-1">
                 <strong>Activities:</strong> @Steps.Count(s => s.StepType == StepType.Activity) | 
                 <strong>Go/No-Go:</strong> @Steps.Count(s => s.StepType == StepType.GoNoGo)
+            </MudText>
+            <MudText Typo="Typo.caption">
+                <strong>Total Time:</strong> @GetTotalMinutes() minutes (@GetTotalDurationText())
             </MudText>
         </div>
     }
@@ -137,13 +162,48 @@
 @code {
     [Parameter]
     public List<PlanStep> Steps { get; set; } = new();
-    
+
     [Parameter]
     public int? SelectedStepId { get; set; }
-    
+
+    [Parameter]
+    public DateTime? PlanStartTime { get; set; }
+
     [Parameter]
     public EventCallback<PlanStep> OnStepClick { get; set; }
-    
+
+    private int GetTotalMinutes()
+    {
+        return Steps.Sum(s => s.MinutesEffort);
+    }
+
+    private string GetTotalDurationText()
+    {
+        var totalMinutes = GetTotalMinutes();
+
+        if (totalMinutes == 0)
+            return "Not estimated";
+
+        if (totalMinutes < 60)
+            return $"{totalMinutes} min";
+
+        var hours = totalMinutes / 60;
+        var minutes = totalMinutes % 60;
+
+        if (minutes == 0)
+            return $"{hours} hr";
+
+        return $"{hours} hr {minutes} min";
+    }
+
+    private DateTime GetEndTime()
+    {
+        if (!PlanStartTime.HasValue)
+            return DateTime.Now;
+
+        return PlanStartTime.Value.AddMinutes(GetTotalMinutes());
+    }
+
     private string GetStepIcon(PlanStep step)
     {
         return step.StepType switch

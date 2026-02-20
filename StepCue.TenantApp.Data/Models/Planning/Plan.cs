@@ -13,7 +13,9 @@ namespace StepCue.TenantApp.Data.Models.Planning
         
         [Required]
         public string Name { get; set; } = string.Empty;
-        
+
+        public DateTime? StartTime { get; set; }
+
         public List<PlanStep> Steps { get; set; } = new();
 
         public List<PlanMember> Members { get; set; } = new();

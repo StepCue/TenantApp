@@ -24,7 +24,16 @@
             <MudSelectItem T="StepType" Value="@StepType.Activity">Execution</MudSelectItem>
             <MudSelectItem T="StepType" Value="@StepType.GoNoGo">Go/NoGo</MudSelectItem>
         </MudSelect>
-        
+
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Estimated Duration</MudText>
+        <MudNumericField @bind-Value="Step.MinutesEffort"
+                        Label="Minutes Effort"
+                        Variant="Variant.Outlined"
+                        Min="0"
+                        HideSpinButtons="false"
+                        Class="mb-3"
+                        HelperText="Estimated time to complete this step" />
+
         <MudText Typo="Typo.subtitle2" Class="mb-2">Assigned Members</MudText>
         @if (PlanMembers != null && PlanMembers.Any())
         {

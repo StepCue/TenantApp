@@ -101,7 +101,16 @@
                     Required="true" 
                     RequiredError="Plan name is required"
                     Immediate="true"
-                    Placeholder="Enter a descriptive name for this plan..." />
+                    Placeholder="Enter a descriptive name for this plan..."
+                    Class="mb-3" />
+
+                <MudDatePicker 
+                    @bind-Date="_plan.StartTime"
+                    Label="Planned Start Time"
+                    Variant="Variant.Outlined"
+                    Editable="true"
+                    DisableToolbar="false"
+                    HelperText="When do you plan to start executing this plan?" />
             </MudPaper>
 
             <MudPaper Elevation="2" Class="pa-4 mb-4">
@@ -179,6 +188,7 @@
                     <PlanTimelineOverview 
                         Steps="@_orderedSteps" 
                         SelectedStepId="@_selectedStep?.Id"
+                        PlanStartTime="@_plan.StartTime"
                         OnStepClick="@ScrollToAndFlashStep" />
                 </div>
             </div>

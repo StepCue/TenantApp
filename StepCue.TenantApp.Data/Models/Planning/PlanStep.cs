@@ -16,7 +16,9 @@ namespace StepCue.TenantApp.Data.Models.Planning
         public string Name { get; set; } = string.Empty;
         
         public string Summary { get; set; } = string.Empty;
-        
+
+        public int MinutesEffort { get; set; } = 0;
+
         public byte[]? Screenshot { get; set; }
         
         public StepType StepType { get; set; } = StepType.Activity;

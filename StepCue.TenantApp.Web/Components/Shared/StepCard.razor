@@ -74,10 +74,21 @@
                     </div>
                 </MudSelectItem>
             </MudSelect>
-            
+
+            <MudNumericField 
+                @bind-Value="@Step.MinutesEffort"
+                Label="Minutes"
+                Variant="Variant.Outlined"
+                Margin="Margin.Dense"
+                Dense="true"
+                Min="0"
+                HideSpinButtons="false"
+                @onclick:stopPropagation="true"
+                Class="step-minutes-field" />
+
             <MudSelect 
                 T="PlanMember" 
-                MultiSelection="true" 
+                MultiSelection="true"
                 SelectedValues="@Step.AssignedMembers"
                 SelectedValuesChanged="@((IEnumerable<PlanMember> values) => OnMembersChanged(values))"
                 Label="Assigned Members"
@@ -243,13 +254,17 @@
     
     .step-metadata {
         display: grid;
-        grid-template-columns: 150px 1fr;
+        grid-template-columns: 150px 100px 1fr;
         gap: 12px;
         margin-bottom: 12px;
     }
-    
+
     .step-type-select {
         min-width: 150px;
+    }
+
+    .step-minutes-field {
+        min-width: 100px;
     }
     
     .step-card-footer {
