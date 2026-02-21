@@ -60,11 +60,7 @@ namespace StepCue.TenantApp.Core.Services
             var newSteps = plan.Steps.Where(s => s.Id == 0).ToList();
             var existingSteps = plan.Steps.Where(s => s.Id > 0).ToList();
 
-            // Add new steps
-            foreach (var step in newSteps)
-            {
-                existingPlan.Steps.Add(step);
-            }
+            //ne steps are handled automatically by EF Core when we add them to the existingPlan.Steps collection
 
             // Update existing steps
             foreach (var step in existingSteps)
